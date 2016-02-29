@@ -39,7 +39,6 @@ for W in Ws:
         O["parameters"]["rank_index"] = numpy.zeros(MPI.COMM_WORLD.size)
         O["parameters"]["rank_index"][MPI.COMM_WORLD.rank] = MPI.COMM_WORLD.rank
         W.write_solo_mpi_reduce(O, MPI.SUM)
-
         
     for i in range(10):
         O = {}
