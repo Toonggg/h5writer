@@ -50,7 +50,6 @@ class AbstractH5Writer:
         for k in keys:
             if isinstance(D[k],dict):
                 group_prefix_new = group_prefix + k + "/"
-                #log_debug(logger, "(%i) Writing to group %s" % (self._rank, group_prefix_new))
                 self._write_group(D[k], group_prefix_new)
             else:
                 name = group_prefix + k
@@ -60,7 +59,6 @@ class AbstractH5Writer:
                     self._f[name][self._i] = data
                 else:
                     self._f[name][self._i,:] = data[:]
-                #log_debug(logger, "(%i) Write to dataset %s at stack position %i (completed)" % (self._rank, name, self._i))
                 
     def _create_dataset(self, data, name):
         if numpy.isscalar(data):
@@ -357,30 +355,34 @@ class H5WriterMPI(AbstractH5Writer):
         # This "if" avoids that processes that are not in the communicator (like the master process of hummingbird) interact with the file and block
         if not self._is_in_communicator():
             return
-        if self.comm:
-            if not self._initialised:
-                log_and_raise_error(logger, "Cannot close uninitialised file. Every worker has to write at least one frame to file. Reduce your number of workers and try again.")
-                exit(1)
-            self._close_signal()
-            while True:
-                log_debug(logger, self._log_prefix + "Closing loop")
-                self._expand_poll()
-                self._update_ready()
-                if self._ready:
-                    break
-                time.sleep(1.)
-            self.comm.Barrier()
-            log_debug(logger, self._log_prefix + "Sync stack length")
-            self._sync_i_max()
-            log_debug(logger, self._log_prefix + "Shrink stacks")
-            self.comm.Barrier()
+
+        if not self._initialised:
+            log_and_raise_error(logger, "Cannot close uninitialised file. Every worker has to write at least one frame to file. Reduce your number of workers and try again.")
+            exit(1)
+        self._close_signal()
+        while True:
+            log_debug(logger, self._log_prefix + "Closing loop")
+            self._expand_poll()
+            self._update_ready()
+            if self._ready:
+                break
+            time.sleep(1.)
+
+        self.comm.Barrier()
+        log_debug(logger, self._log_prefix + "Sync stack length")
+        self._sync_i_max()
+
+        log_debug(logger, self._log_prefix + "Shrink stacks")
+        self.comm.Barrier()
         self._shrink_stacks()
-        if self.comm:
-            self.comm.Barrier()
+        self.comm.Barrier()
+
         log_debug(logger, self._log_prefix + "Closing file %s for parallel writing." % (self._filename))
         self._f.close()
         log_debug(logger, self._log_prefix + "File %s closed for parallel writing." % (self._filename))
+
         log_debug(logger, self._log_prefix + "Write solo cache to file %s" % (self._filename))
         self._write_solocache_to_file()
         log_debug(logger, self._log_prefix + "Solo cache written to file %s" % (self._filename))
+
         log_info(logger, self._log_prefix + "HDF5 parallel writer instance for file %s closed." % (self._filename))
