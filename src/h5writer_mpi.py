@@ -1,7 +1,7 @@
 import numpy, os, time
 import h5py
 
-from h5writer import AbstractH5Writer,logger
+from log import log_and_raise_error, log_warning, log_info, log_debug
 
 try:
     from mpi4py import MPI
@@ -12,6 +12,8 @@ MPI_TAG_INIT   = 1# + 4353
 MPI_TAG_EXPAND = 2# + 4353
 MPI_TAG_READY  = 3# + 4353
 MPI_TAG_CLOSE  = 4# + 4353
+
+from h5writer import AbstractH5Writer,logger
 
 class H5WriterMPI(AbstractH5Writer):
     """

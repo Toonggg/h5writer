@@ -2,8 +2,9 @@ import numpy, os, time
 import h5py
 
 import logging
-from log import log_and_raise_error, log_warning, log_info, log_debug
 logger = logging.getLogger(__name__)
+
+from log import log_and_raise_error, log_warning, log_info, log_debug
 
 class AbstractH5Writer:
     def __init__(self, filename, chunksize, compression):

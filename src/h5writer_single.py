@@ -1,6 +1,8 @@
 import numpy, os, time
 import h5py
 
+from log import log_and_raise_error, log_warning, log_info, log_debug
+
 from h5writer import AbstractH5Writer,logger
 
 class H5Writer(AbstractH5Writer):
