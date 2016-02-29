@@ -227,28 +227,19 @@ class H5WriterMPI(AbstractH5Writer):
     def write_solo(self, data_dict):
         return self._to_solocache(data_dict, target=self._solocache)
 
-    def write_solo_mpi_min(self, data_dict):
-        return self._to_solocache(data_dict, target=self._solocache, mpi_reduce="min")
+    def write_solo_mpi_reduce(self, data_dict, op):
+        return self._to_solocache(data_dict, target=self._solocache, op=op)
 
-    def write_solo_mpi_max(self, data_dict):
-        return self._to_solocache(data_dict, target=self._solocache, mpi_reduce="max")
-
-    def write_solo_mpi_sum(self, data_dict):
-        return self._to_solocache(data_dict, target=self._solocache, mpi_reduce="sum")
-
-    def write_solo_mpi_mean(self, data_dict):
-        return self._to_solocache(data_dict, target=self._solocache, mpi_reduce="mean")
-        
-    def _to_solocache(self, data_dict, target, mpi_reduce=None):
+    def _to_solocache(self, data_dict, target, op=None):
         keys = data_dict.keys()
         keys.sort()
         for k in keys:
             if isinstance(data_dict[k], dict):
                 if k not in target:
                     target[k] = {}
-                self._to_solocache(data_dict[k], target=target[k], mpi_reduce=mpi_reduce)
+                self._to_solocache(data_dict[k], target=target[k], op=op)
             else:
-                target[k] = (data_dict[k], mpi_reduce)
+                target[k] = (data_dict[k], op)
 
     def _write_solocache_to_file(self):
         if self._is_master():
@@ -267,24 +258,21 @@ class H5WriterMPI(AbstractH5Writer):
             if isinstance(data_dict[k], dict):
                 self._write_solocache_group_to_file(data_dict[k], group_prefix=name+"/")
             else:
-                (data, mpi_reduce) = data_dict[k]
-                if mpi_reduce is not None:
-                    if mpi_reduce == "min":
-                        op = MPI.MIN
-                    elif mpi_reduce == "max":
-                        op = MPI.MAX
-                    elif mpi_reduce == "sum" or mpi_reduce == "mean":
-                        op = MPI.SUM
+                (data, op) = data_dict[k]
+                if op is not None:
                     if numpy.isscalar(data):
                         sendobj = numpy.array(data)
                     else:
                         sendobj = data
                     recvobj = numpy.empty_like(data)
                     log_debug(logger, self._log_prefix + "Reducing data %s" % (name))
-                    self.comm.reduce(sendobj=sendobj, recvobj=recvobj, op=op)
+                    self.comm.Reduce(
+                        [sendobj, MPI.DOUBLE],
+                        [recvobj, MPI.DOUBLE],
+                        op = op,
+                        root = 0
+                    )
                     data = recvobj
-                    if mpi_reduce == "mean":
-                        data = data / (1. * self.comm.size)
                 if self._is_master():
                     log_debug(logger, self._log_prefix + "Writing data %s" % (name))
                     self._f[name] = data
