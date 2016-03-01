@@ -24,11 +24,11 @@ class H5WriterMPI(AbstractH5Writer):
         AbstractH5Writer.__init__(self, filename, chunksize=chunksize, compression=compression)
         # MPI communicator
         self.comm = comm
-        # Logging
-        self._log_prefix = "(%i) " %  self.comm.rank
         # This "if" avoids that processes that are not in the communicator (like the master process of hummingbird) interact with the file and block
         if not self._is_in_communicator():
             return
+        # Logging
+        self._log_prefix = "(%i) " %  self.comm.rank
         # Index
         self._i += self.comm.rank
         self._i_max = -1
@@ -123,7 +123,7 @@ class H5WriterMPI(AbstractH5Writer):
         except MPI.Exception:
             out = False
         if not out:
-            log_warning(logger, self._log_prefix + "This process cannot write.")
+            log_warning(logger, "This process cannot write.")
         return out
             
     def _is_master(self):
