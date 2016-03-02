@@ -150,7 +150,8 @@ class H5WriterMPI(AbstractH5Writer):
             
     def _write_solocache_group_to_file(self, data_dict, group_prefix="/"):
         if self._is_master() and group_prefix != "/":
-            self._f.create_group(group_prefix)
+            if group_prefix in self._f:
+                self._f.create_group(group_prefix)
         keys = data_dict.keys()
         keys.sort()
         for k in keys:
@@ -206,7 +207,7 @@ class H5WriterMPI(AbstractH5Writer):
             self._closing_clients = [i for i in range(self.comm.size) if i != self.comm.rank]
             self._signal_sent     = False
         else:
-            self.comm.Isend([numpy.array(self.comm.rank, dtype="i"), MPI.INT], dest=0, tag=MPI_TAG_READY)
+            self.comm.Send([numpy.array(self.comm.rank, dtype="i"), MPI.INT], dest=0, tag=MPI_TAG_READY)
             
     def _update_ready(self):
         if self.comm.rank == 0:
@@ -218,7 +219,8 @@ class H5WriterMPI(AbstractH5Writer):
                 if not self._signal_sent:
                     for i in self._closing_clients:
                         # Send out signal
-                        self.comm.Isend([numpy.array(-1, dtype="i"), MPI.INT], dest=i, tag=MPI_TAG_CLOSE)
+                        #self.comm.Isend([numpy.array(-1, dtype="i"), MPI.INT], dest=i, tag=MPI_TAG_CLOSE)
+                        self.comm.Send([numpy.array(-1, dtype="i"), MPI.INT], dest=i, tag=MPI_TAG_CLOSE)
                     self._signal_sent = True
                 # Collect more confirmations
                 for i in self._closing_clients:
@@ -227,7 +229,8 @@ class H5WriterMPI(AbstractH5Writer):
             self._ready = len(self._closing_clients) == 0
         else:
             if self.comm.Iprobe(source=0, tag=MPI_TAG_CLOSE):
-                self.comm.Isend([numpy.array(1, dtype="i"), MPI.INT], dest=0, tag=MPI_TAG_CLOSE)
+                #self.comm.Isend([numpy.array(1, dtype="i"), MPI.INT], dest=0, tag=MPI_TAG_CLOSE)
+                self.comm.Send([numpy.array(1, dtype="i"), MPI.INT], dest=0, tag=MPI_TAG_CLOSE)
                 self._ready = True
         log_debug(logger, self._log_prefix + "Ready status updated: %i" % (self._ready))
         
