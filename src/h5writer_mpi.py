@@ -50,9 +50,9 @@ class H5WriterMPI(AbstractH5Writer):
         if not self._initialised:
             self._initialise_tree(data_dict)
             self._initialised = True
-        self._i = (self._i + 1) if i is None else i
+        self._i = self._i + self.comm.size if i is None else i
         if self._i > (self._stack_length-1):
-            # Expand stacks if needde
+            # Expand stacks if needded
             while self._i > (self._stack_length-1):
                 self._expand_signal()
                 self._expand_poll()
@@ -181,7 +181,8 @@ class H5WriterMPI(AbstractH5Writer):
     def _expand_signal(self):
         log_debug(logger, self._log_prefix + "Send expand signal")
         for i in range(self.comm.size):
-            self.comm.Send([numpy.array(self._i, dtype="i"), MPI.INT], dest=i, tag=MPI_TAG_EXPAND)
+            buf = numpy.array(self._i, dtype="i")
+            self.comm.Send([buf, MPI.INT], dest=i, tag=MPI_TAG_EXPAND)
 
     def _expand_poll(self):
         L = []
@@ -207,7 +208,8 @@ class H5WriterMPI(AbstractH5Writer):
             self._closing_clients = [i for i in range(self.comm.size) if i != self.comm.rank]
             self._signal_sent     = False
         else:
-            self.comm.Send([numpy.array(self.comm.rank, dtype="i"), MPI.INT], dest=0, tag=MPI_TAG_READY)
+            buf = numpy.array(self.comm.rank, dtype="i")
+            self.comm.Send([buf, MPI.INT], dest=0, tag=MPI_TAG_READY)
             
     def _update_ready(self):
         if self.comm.rank == 0:
@@ -220,7 +222,8 @@ class H5WriterMPI(AbstractH5Writer):
                     for i in self._closing_clients:
                         # Send out signal
                         #self.comm.Isend([numpy.array(-1, dtype="i"), MPI.INT], dest=i, tag=MPI_TAG_CLOSE)
-                        self.comm.Send([numpy.array(-1, dtype="i"), MPI.INT], dest=i, tag=MPI_TAG_CLOSE)
+                        buf = numpy.array(-1, dtype="i")
+                        self.comm.Send([buf, MPI.INT], dest=i, tag=MPI_TAG_CLOSE)
                     self._signal_sent = True
                 # Collect more confirmations
                 for i in self._closing_clients:
@@ -230,7 +233,8 @@ class H5WriterMPI(AbstractH5Writer):
         else:
             if self.comm.Iprobe(source=0, tag=MPI_TAG_CLOSE):
                 #self.comm.Isend([numpy.array(1, dtype="i"), MPI.INT], dest=0, tag=MPI_TAG_CLOSE)
-                self.comm.Send([numpy.array(1, dtype="i"), MPI.INT], dest=0, tag=MPI_TAG_CLOSE)
+                buf = numpy.array(1, dtype="i")
+                self.comm.Send([buf, MPI.INT], dest=0, tag=MPI_TAG_CLOSE)
                 self._ready = True
         log_debug(logger, self._log_prefix + "Ready status updated: %i" % (self._ready))
         
