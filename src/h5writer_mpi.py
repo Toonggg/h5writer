@@ -30,7 +30,7 @@ class H5WriterMPI(AbstractH5Writer):
         # Logging
         self._log_prefix = "(%i) " %  self.comm.rank
         # Index
-        self._i += self.comm.rank
+        self._i = -self.comm.size + self.comm.rank
         self._i_max = -1
         # Chache
         self._solocache = {}
@@ -39,7 +39,8 @@ class H5WriterMPI(AbstractH5Writer):
         # Open file
         if os.path.exists(self._filename):
             log_warning(logger, self._log_prefix + "File %s exists and is being overwritten" % (self._filename))
-        self._f = h5py.File(self._filename, "w", driver='mpio', comm=self.comm)        
+        self._f = h5py.File(self._filename, "w", driver='mpio', comm=self.comm)
+        log_debug(logger, self._log_prefix + "File successfully opened for parallel writing.")
         
     def write_slice(self, data_dict, i=None):
         """
@@ -49,7 +50,15 @@ class H5WriterMPI(AbstractH5Writer):
         # Initialise of tree (groups and datasets)
         if not self._initialised:
             self._initialise_tree(data_dict)
+            #
+            if self._stack_length < self.comm.size:
+                stack_length_new = self._stack_length
+                while self.comm.size > stack_length_new:
+                    stack_length_new *= 2
+                self._expand_stacks(stack_length_new)  
+            # 
             self._initialised = True
+            log_debug(logger, self._log_prefix + "Tree initialised")
         self._i = self._i + self.comm.size if i is None else i
         if self._i >= self._stack_length:
             # Expand stacks if needded
@@ -180,6 +189,7 @@ class H5WriterMPI(AbstractH5Writer):
             buf = numpy.array(self._i, dtype="i")
             self.comm.Send([buf, MPI.INT], dest=i, tag=MPI_TAG_EXPAND)
             #self.comm.send(buf, dest=i, tag=MPI_TAG_EXPAND)
+        log_debug(logger, self._log_prefix + "Sent expand signal")
 
     def _expand_poll(self):
         i_max = None
@@ -199,11 +209,14 @@ class H5WriterMPI(AbstractH5Writer):
             if i_max < self._stack_length:
                 log_debug(logger, self._log_prefix + "Expansion signal no longer needed (%i < %i)" % (i_max, self._stack_length))
                 return
-            while i_max >= self._stack_length:
-                # OK - There is a process that needs longer stacks, so we'll actually expand the stacks
-                stack_length_new = self._stack_length * 2
-                log_debug(logger, self._log_prefix + "Start stack expansion (%i >= %i) - new stack length will be %i" % (i_max, self._stack_length, stack_length_new))
-                self._expand_stacks(stack_length_new)
+            self._i_max = i_max
+            # OK - There is a process that needs longer stacks, so we'll actually expand the stacks
+            self._sync_i_max()
+            stack_length_new = self._stack_length
+            while self._i_max >= stack_length_new:
+                stack_length_new *= 2
+            log_debug(logger, self._log_prefix + "Start stack expansion (%i >= %i) - new stack length will be %i" % (self._i_max, self._stack_length, stack_length_new))
+            self._expand_stacks(stack_length_new)
 
     def _close_signal(self):
         if self.comm.rank == 0:
@@ -248,5 +261,6 @@ class H5WriterMPI(AbstractH5Writer):
         log_debug(logger, self._log_prefix + "Entering allreduce with maximum index %i" % (self._i_max))
         self.comm.Allreduce([sendbuf, MPI.INT], [recvbuf, MPI.INT], op=MPI.MAX)
         self._i_max = recvbuf[0]
+        log_debug(logger, self._log_prefix + "After reduce: i_max = %i" % self._i_max)
         
     

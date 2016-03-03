@@ -11,7 +11,6 @@ class AbstractH5Writer:
         self._filename = os.path.expandvars(filename)        
         self._chunksize = chunksize
         self._stack_length = chunksize
-        self._i = -1
         self._i_max = -1
         self._create_dataset_kwargs = {}
         self._log_prefix = ""

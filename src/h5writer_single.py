@@ -11,10 +11,11 @@ class H5Writer(AbstractH5Writer):
     """
     def __init__(self, filename, chunksize=100, compression=None):
         AbstractH5Writer.__init__(self, filename, chunksize=chunksize, compression=compression)
+        self._i = -1
         if os.path.exists(self._filename):
             log_warning(logger, self._log_prefix + "File %s exists and is being overwritten" % (self._filename))
         self._f = h5py.File(self._filename, "w")
-
+        
     def write_slice(self, data_dict, i=None):
         """
         Call this function for writing all data in data_dict as a slice of stacks (first dimension = stack dimension).
