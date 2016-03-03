@@ -32,6 +32,8 @@ class H5WriterMPI(AbstractH5Writer):
         # Index
         self._i += self.comm.rank
         self._i_max = -1
+        # Chache
+        self._solocache = {}
         # Status
         self._ready = False
         # Open file
@@ -63,6 +65,12 @@ class H5WriterMPI(AbstractH5Writer):
         # Update of maximum index
         self._i_max = self._i if self._i > self._i_max else self._i_max
 
+    def write_solo(self, data_dict):
+        """
+        Call this function for writing datasets that have no stack dimension (i.e. no slices).
+        """
+        return self._to_solocache(data_dict, target=self._solocache)
+        
     def write_solo_mpi_reduce(self, data_dict, op):
         """
         Call this function for writing datasets that have no stack dimension (i.e. no slices).
