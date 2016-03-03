@@ -33,27 +33,36 @@ class H5Writer(AbstractH5Writer):
         # Update of maximum index
         self._i_max = self._i if self._i > self._i_max else self._i_max
 
-    def write_solo(self, data_dict):
-        """
-        Call this function for writing datasets that have no stack dimension (i.e. no slices).
-        """
-        self._write_solo_group(data_dict)
+    def _to_solocache(self, data_dict, target):
+        keys = data_dict.keys()
+        keys.sort()
+        for k in keys:
+            if isinstance(data_dict[k], dict):
+                if k not in target:
+                    target[k] = {}
+                self._to_solocache(data_dict[k], target=target[k])
+            else:
+                target[k] = data_dict[k]
+
+    def _write_solocache_group_to_file(self, data_dict, group_prefix="/"):
+        if group_prefix != "/" and group_prefix not in self._f:
+            self._f.create_group(group_prefix)
+        keys = data_dict.keys()
+        keys.sort()
+        for k in keys:
+            name = group_prefix + k
+            if isinstance(data_dict[k], dict):
+                self._write_solocache_group_to_file(data_dict[k], group_prefix=name+"/")
+            else:
+                data = data_dict[k]
+                self._f[name] = data
 
     def close(self):
         """
         Close file.
         """
+        self._shrink_stacks()
+        self._write_solocache_group_to_file(self._solocache)
         self._f.close()
         log_info(logger, self._log_prefix + "HDF5 writer instance for file %s closed." % (self._filename))
-        
-        
-    def _write_solo_group(self, data_dict, group_prefix="/"):
-        if group_prefix != "/" and not group_prefix in self._f:
-            self._f.create_group(group_prefix)
-        for k,v in data_dict.items():
-            name = group_prefix + k
-            if isinstance(v, dict):
-                self._write_solo_group(v, group_prefix=name+"/")
-            else:
-                self._f[name] = v                
         

@@ -18,6 +18,8 @@ class AbstractH5Writer:
         if compression is not None:
             self._create_dataset_kwargs["compression"] = compression
         self._initialised = False
+        # Chache
+        self._solocache = {}
             
     def _initialise_tree(self, D, group_prefix="/"):
         keys = D.keys()
@@ -35,6 +37,12 @@ class AbstractH5Writer:
                 if name not in self._f:
                     data = D[k]
                     self._create_dataset(data, name)
+
+    def write_solo(self, data_dict):
+        """
+        Call this function for writing datasets that have no stack dimension (i.e. no slices).
+        """
+        return self._to_solocache(data_dict, target=self._solocache)
                     
     def _write_group(self, D, group_prefix="/"):
         keys = D.keys()

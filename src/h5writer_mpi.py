@@ -34,8 +34,6 @@ class H5WriterMPI(AbstractH5Writer):
         self._i_max = -1
         # Status
         self._ready = False
-        # Chache
-        self._solocache = {}
         # Open file
         if os.path.exists(self._filename):
             log_warning(logger, self._log_prefix + "File %s exists and is being overwritten" % (self._filename))
@@ -64,12 +62,6 @@ class H5WriterMPI(AbstractH5Writer):
         self._write_group(data_dict)
         # Update of maximum index
         self._i_max = self._i if self._i > self._i_max else self._i_max
-
-    def write_solo(self, data_dict):
-        """
-        Call this function for writing datasets that have no stack dimension (i.e. no slices).
-        """
-        return self._to_solocache(data_dict, target=self._solocache)
 
     def write_solo_mpi_reduce(self, data_dict, op):
         """
@@ -112,7 +104,11 @@ class H5WriterMPI(AbstractH5Writer):
         log_debug(logger, self._log_prefix + "File %s closed for parallel writing." % (self._filename))
 
         log_debug(logger, self._log_prefix + "Write solo cache to file %s" % (self._filename))
-        self._write_solocache_to_file()
+        if self._is_master():
+            self._f = h5py.File(self._filename, "r+")
+        self._write_solocache_group_to_file(self._solocache)
+        if self._is_master():
+            self._f.close()
         log_debug(logger, self._log_prefix + "Solo cache written to file %s" % (self._filename))
 
         log_info(logger, self._log_prefix + "HDF5 parallel writer instance for file %s closed." % (self._filename))
@@ -140,18 +136,10 @@ class H5WriterMPI(AbstractH5Writer):
                 self._to_solocache(data_dict[k], target=target[k], op=op)
             else:
                 target[k] = (data_dict[k], op)
-
-    def _write_solocache_to_file(self):
-        if self._is_master():
-            self._f = h5py.File(self._filename, "r+")
-        self._write_solocache_group_to_file(self._solocache)
-        if self._is_master():
-            self._f.close()
             
     def _write_solocache_group_to_file(self, data_dict, group_prefix="/"):
-        if self._is_master() and group_prefix != "/":
-            if group_prefix not in self._f:
-                self._f.create_group(group_prefix)
+        if self._is_master() and group_prefix != "/" and group_prefix not in self._f:
+            self._f.create_group(group_prefix)
         keys = data_dict.keys()
         keys.sort()
         for k in keys:
