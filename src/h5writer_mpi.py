@@ -150,7 +150,7 @@ class H5WriterMPI(AbstractH5Writer):
             
     def _write_solocache_group_to_file(self, data_dict, group_prefix="/"):
         if self._is_master() and group_prefix != "/":
-            if group_prefix in self._f:
+            if group_prefix not in self._f:
                 self._f.create_group(group_prefix)
         keys = data_dict.keys()
         keys.sort()

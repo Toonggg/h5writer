@@ -11,10 +11,13 @@ from h5writer import H5WriterMPI, H5Writer
 
 h5writer.logger.setLevel("INFO")
 
-Ws = [H5Writer("./test_nompi_%i.h5" % MPI.COMM_WORLD.rank)]
+Ws = []
+
+#Ws += [H5Writer("./test_nompi_%i.h5" % MPI.COMM_WORLD.rank)]
 
 if MPI.COMM_WORLD.size > 1:
-    Ws.append(H5WriterMPI("./test_mpi.h5", comm=MPI.COMM_WORLD))
+    Ws.append(H5WriterMPI("/scratch/fhgfs/hantke/test_mpi.h5", comm=MPI.COMM_WORLD))
+    #Ws.append(H5WriterMPI("./test_mpi.h5", comm=MPI.COMM_WORLD))
 else:
     print "*"*100
     print "!!! WARNING: MPI COMMUNICATOR HAS SIZE 1. CANNOT PERFORM MPI TESTS WITH THIS CONFIGURATION."
@@ -47,7 +50,7 @@ for W in Ws:
         O["parameters"]["rank_index"][MPI.COMM_WORLD.rank] = MPI.COMM_WORLD.rank
         W.write_solo_mpi_reduce(O, MPI.SUM)
         
-    for i in range(10):
+    for i in range(100):
         O = {}
         O["entry_1"] = {}
         O["entry_1"]["data_1"] = {}
