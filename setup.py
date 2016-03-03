@@ -3,7 +3,7 @@
 from setuptools import setup
 
 setup(name='h5writer',
-      version='0.1.3',
+      version='0.1.4',
       description='Writing HDF5 files with openMPI.',
       author='Max F. Hantke, Benedikt Daurer',
       author_email='maxhantke@gmail.com',
