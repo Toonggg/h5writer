@@ -40,7 +40,6 @@ class H5WriterMPI(AbstractH5Writer):
         if os.path.exists(self._filename):
             log_warning(logger, self._log_prefix + "File %s exists and is being overwritten" % (self._filename))
         self._f = h5py.File(self._filename, "w", driver='mpio', comm=self.comm)        
-        self.comm.Barrier()
         
     def write_slice(self, data_dict, i=None):
         """
@@ -49,16 +48,15 @@ class H5WriterMPI(AbstractH5Writer):
         """
         # Initialise of tree (groups and datasets)
         if not self._initialised:
-            self.comm.Barrier()
             self._initialise_tree(data_dict)
             self._initialised = True
         self._i = self._i + self.comm.size if i is None else i
-        if self._i > (self._stack_length-1):
+        if self._i >= self._stack_length:
             # Expand stacks if needded
-            while self._i > (self._stack_length-1):
+            while self._i >= self._stack_length:
                 self._expand_signal()
                 self._expand_poll()
-                if self._i > (self._stack_length-1):
+                if self._i >= self._stack_length:
                     time.sleep(1)
         else:
             self._expand_poll()
@@ -185,24 +183,31 @@ class H5WriterMPI(AbstractH5Writer):
         for i in range(self.comm.size):
             buf = numpy.array(self._i, dtype="i")
             self.comm.Send([buf, MPI.INT], dest=i, tag=MPI_TAG_EXPAND)
+            #self.comm.send(buf, dest=i, tag=MPI_TAG_EXPAND)
 
     def _expand_poll(self):
-        L = []
+        i_max = None
         for i in range(self.comm.size): 
+            #buf = numpy.empty(1, dtype="i")
+            #req = self.comm.Irecv([buf, MPI.INT], source=i, tag=MPI_TAG_EXPAND)
+            #if req.test():
             if self.comm.Iprobe(source=i, tag=MPI_TAG_EXPAND):
                 buf = numpy.empty(1, dtype="i")
                 self.comm.Recv([buf, MPI.INT], source=i, tag=MPI_TAG_EXPAND)
-                L.append(buf[0])
-        if len(L) > 0:
-            i_max = max(L)
+                if i_max is None:
+                    i_max = buf[0]
+                else:
+                    i_max = i_max if i_max > buf[0] else buf[0]
+        if i_max is not None:
             # Is expansion still needed or is the signal outdated?
             if i_max < self._stack_length:
                 log_debug(logger, self._log_prefix + "Expansion signal no longer needed (%i < %i)" % (i_max, self._stack_length))
                 return
-            # OK - There is a process that needs longer stacks, so we'll actually expand the stacks
-            stack_length_new = self._stack_length * 2
-            log_debug(logger, self._log_prefix + "Start stack expansion (%i >= %i) - new stack length will be %i" % (i_max, self._stack_length, stack_length_new))
-            self._expand_stacks(stack_length_new)
+            while i_max >= self._stack_length:
+                # OK - There is a process that needs longer stacks, so we'll actually expand the stacks
+                stack_length_new = self._stack_length * 2
+                log_debug(logger, self._log_prefix + "Start stack expansion (%i >= %i) - new stack length will be %i" % (i_max, self._stack_length, stack_length_new))
+                self._expand_stacks(stack_length_new)
 
     def _close_signal(self):
         if self.comm.rank == 0:
