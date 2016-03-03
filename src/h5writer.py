@@ -26,13 +26,15 @@ class AbstractH5Writer:
             if isinstance(D[k],dict):
                 group_prefix_new = group_prefix + k + "/"
                 log_debug(logger, self._log_prefix + "Creating group %s" % (group_prefix_new))
-                self._f.create_group(group_prefix_new)
+                if group_prefix_new != "/" and group_prefix_new not in self._f:
+                    self._f.create_group(group_prefix_new)
                 self._initialise_tree(D[k], group_prefix=group_prefix_new)
             else:
                 name = group_prefix + k
                 log_debug(logger, self._log_prefix + "Creating dataset %s" % (name))
-                data = D[k]
-                self._create_dataset(data, name)
+                if name not in self._f:
+                    data = D[k]
+                    self._create_dataset(data, name)
                     
     def _write_group(self, D, group_prefix="/"):
         keys = D.keys()

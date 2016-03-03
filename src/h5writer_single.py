@@ -23,7 +23,7 @@ class H5Writer(AbstractH5Writer):
         if not self._initialised:
             # Initialise of tree (groups and datasets)
             self._initialise_tree(data_dict)
-            self._initialised = True        
+            self._intialised = True        
         self._i = self._i + 1 if i is None else i
         if self._i >= (self._stack_length-1):
             # Expand stacks if needed
