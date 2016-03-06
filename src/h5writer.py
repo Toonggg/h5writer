@@ -11,6 +11,7 @@ class AbstractH5Writer:
         self._filename = os.path.expandvars(filename)        
         self._chunksize = chunksize
         self._stack_length = chunksize
+        self._i = None
         self._i_max = -1
         self._create_dataset_kwargs = {}
         self._log_prefix = ""
@@ -92,6 +93,7 @@ class AbstractH5Writer:
                 self._expand_stack(stack_length, name)
             else:
                 self._expand_stacks(stack_length, name + "/")
+        self._stack_length = stack_length
             
     def _expand_stack(self, stack_length, name):
         new_shape = list(self._f[name].shape)
@@ -99,7 +101,6 @@ class AbstractH5Writer:
         new_shape = tuple(new_shape)
         log_info(logger, self._log_prefix + "Expand dataset %s [old shape: %s, new shape: %s]" % (name, str(self._f[name].shape), str(new_shape)))
         self._f[name].resize(new_shape)
-        self._stack_length = stack_length
             
     def _shrink_stacks(self, group_prefix="/"):
         stack_length = self._i_max + 1

@@ -11,12 +11,11 @@ class H5Writer(AbstractH5Writer):
     """
     def __init__(self, filename, chunksize=100, compression=None):
         AbstractH5Writer.__init__(self, filename, chunksize=chunksize, compression=compression)
-        self._i = -1
         if os.path.exists(self._filename):
             log_warning(logger, self._log_prefix + "File %s exists and is being overwritten" % (self._filename))
         self._f = h5py.File(self._filename, "w")
         
-    def write_slice(self, data_dict, i=None):
+    def write_slice(self, data_dict):
         """
         Call this function for writing all data in data_dict as a slice of stacks (first dimension = stack dimension).
         Dictionaries within data_dict are represented as HDF5 groups. The slice index is either the next one (i=None) or a given integer i.
@@ -25,7 +24,11 @@ class H5Writer(AbstractH5Writer):
             # Initialise of tree (groups and datasets)
             self._initialise_tree(data_dict)
             self._intialised = True        
-        self._i = self._i + 1 if i is None else i
+        # Iterate index
+        if self._i is None:
+            self._i = 0
+        else:
+            self._i += 1
         if self._i >= (self._stack_length-1):
             # Expand stacks if needed
             self._expand_stacks(self._stack_length * 2)

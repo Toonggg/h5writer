@@ -34,6 +34,9 @@ class H5WriterMPI(AbstractH5Writer):
         self._i_max = -1
         # Chache
         self._solocache = {}
+        # Ibcast
+        self._ibcast_buffers = [None] * comm.size
+        self._ibcast_requests = [None] * comm.size
         # Status
         self._ready = False
         # Open file
@@ -50,25 +53,22 @@ class H5WriterMPI(AbstractH5Writer):
         # Initialise of tree (groups and datasets)
         if not self._initialised:
             self._initialise_tree(data_dict)
-            if self._stack_length < self.comm.size:
-                stack_length_new = self._stack_length
-                while self.comm.size > stack_length_new:
-                    stack_length_new *= 2
-                self._expand_stacks(stack_length_new)  
+            if self.comm.size > self._stack_length:
+                self._expand_stacks_mpi(i_max=self.comm.size-1)  
             self._initialised = True
             log_debug(logger, self._log_prefix + "Tree initialised")
         self._i = self._i + self.comm.size if i is None else i
+        # Update of maximum index
+        self._i_max = self._i if self._i > self._i_max else self._i_max
         if self._i >= self._stack_length:
             # Expand stacks if needded
-            #while self._i >= self._stack_length:
             self._expand_signal()
-            self._expand
+            self._sync_i_max()
+            self._expand_stacks_mpi()
         else:
             self._expand_poll()
         # Write data
         self._write_group(data_dict)
-        # Update of maximum index
-        self._i_max = self._i if self._i > self._i_max else self._i_max
 
     def write_solo(self, data_dict):
         """
@@ -184,8 +184,8 @@ class H5WriterMPI(AbstractH5Writer):
         self._ibcast_buffers[self.comm.rank] = numpy.array(self._i, dtype='i')
         self._ibcast_requests[self.comm.rank] = self.comm.Ibcast([self._ibcast_buffers[self.comm.rank], MPI.INT], self.comm.rank)
         self._ibcast_requests[self.comm.rank].Wait()
-        self._ibcast_requests[self.comm.rank].Free()
-        self._expand_stacks()
+        #self._ibcast_requests[self.comm.rank].Free()
+        #self._expand_stacks()
 
     def _expand_poll(self):
         for i in range(self.comm.size):
@@ -196,17 +196,19 @@ class H5WriterMPI(AbstractH5Writer):
                     self._ibcast_requests[i] = self.comm.Ibcast([self._ibcast_buffers[i], MPI.INT], i)
                 # Check request zsof Ibcast call
                 if self._ibcast_requests[i].Test():
-                    self._ibcast_requests[i].Free()
+                    #self._ibcast_requests[i].Free()
                     self._ibcast_requests[i] = None
-                    self._expand_stacks()
+                    self._sync_i_max()
+                    self._expand_stacks_mpi()
 
-    def _expand_stacks(self):
-        self._sync_i_max()
+    def _expand_stacks_mpi(self, i_max=None):
+        if i_max is None:
+            i_max = self._i_max
         stack_length_new = self._stack_length
-        while self._i_max >= stack_length_new:
+        while i_max >= stack_length_new:
             stack_length_new *= 2
-        log_debug(logger, self._log_prefix + "Start stack expansion (%i >= %i) - new stack length will be %i" % (self._i_max, self._stack_length, stack_length_new))
-        AbstractH5Writer._expand_stacks(self, stack_length_new)
+        log_debug(logger, self._log_prefix + "Start stack expansion (%i >= %i) - new stack length will be %i" % (i_max, self._stack_length, stack_length_new))
+        self._expand_stacks(stack_length_new)
 
     def _close_signal(self):
         if self.comm.rank == 0:
