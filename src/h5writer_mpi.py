@@ -50,23 +50,19 @@ class H5WriterMPI(AbstractH5Writer):
         # Initialise of tree (groups and datasets)
         if not self._initialised:
             self._initialise_tree(data_dict)
-            #
             if self._stack_length < self.comm.size:
                 stack_length_new = self._stack_length
                 while self.comm.size > stack_length_new:
                     stack_length_new *= 2
                 self._expand_stacks(stack_length_new)  
-            # 
             self._initialised = True
             log_debug(logger, self._log_prefix + "Tree initialised")
         self._i = self._i + self.comm.size if i is None else i
         if self._i >= self._stack_length:
             # Expand stacks if needded
-            while self._i >= self._stack_length:
-                self._expand_signal()
-                self._expand_poll()
-                if self._i >= self._stack_length:
-                    time.sleep(1)
+            #while self._i >= self._stack_length:
+            self._expand_signal()
+            self._expand
         else:
             self._expand_poll()
         # Write data
@@ -185,38 +181,32 @@ class H5WriterMPI(AbstractH5Writer):
         
     def _expand_signal(self):
         log_debug(logger, self._log_prefix + "Send expand signal")
-        for i in range(self.comm.size):
-            buf = numpy.array(self._i, dtype="i")
-            self.comm.Send([buf, MPI.INT], dest=i, tag=MPI_TAG_EXPAND)
-            #self.comm.send(buf, dest=i, tag=MPI_TAG_EXPAND)
-        log_debug(logger, self._log_prefix + "Sent expand signal")
+        self._ibcast_buffers[self.comm.rank] = numpy.array(self._i, dtype='i')
+        self._ibcast_requests[self.comm.rank] = self.comm.Ibcast([self._ibcast_buffers[self.comm.rank], MPI.INT], self.comm.rank)
+        self._ibcast_requests[self.comm.rank].Wait()
+        self._ibcast_requests[self.comm.rank].Free()
+        self._expand_stacks()
 
     def _expand_poll(self):
-        i_max = None
-        for i in range(self.comm.size): 
-            #buf = numpy.empty(1, dtype="i")
-            #req = self.comm.Irecv([buf, MPI.INT], source=i, tag=MPI_TAG_EXPAND)
-            #if req.test():
-            if self.comm.Iprobe(source=i, tag=MPI_TAG_EXPAND):
-                buf = numpy.empty(1, dtype="i")
-                self.comm.Recv([buf, MPI.INT], source=i, tag=MPI_TAG_EXPAND)
-                if i_max is None:
-                    i_max = buf[0]
-                else:
-                    i_max = i_max if i_max > buf[0] else buf[0]
-        if i_max is not None:
-            # Is expansion still needed or is the signal outdated?
-            if i_max < self._stack_length:
-                log_debug(logger, self._log_prefix + "Expansion signal no longer needed (%i < %i)" % (i_max, self._stack_length))
-                return
-            self._i_max = i_max
-            # OK - There is a process that needs longer stacks, so we'll actually expand the stacks
-            self._sync_i_max()
-            stack_length_new = self._stack_length
-            while self._i_max >= stack_length_new:
-                stack_length_new *= 2
-            log_debug(logger, self._log_prefix + "Start stack expansion (%i >= %i) - new stack length will be %i" % (self._i_max, self._stack_length, stack_length_new))
-            self._expand_stacks(stack_length_new)
+        for i in range(self.comm.size):
+            if i != self.comm.rank:
+                # Initialise Ibcast
+                if self._ibcast_requests[i] is None:
+                    self._ibcast_buffers[i] = numpy.empty(1, dtype='i')
+                    self._ibcast_requests[i] = self.comm.Ibcast([self._ibcast_buffers[i], MPI.INT], i)
+                # Check request zsof Ibcast call
+                if self._ibcast_requests[i].Test():
+                    self._ibcast_requests[i].Free()
+                    self._ibcast_requests[i] = None
+                    self._expand_stacks()
+
+    def _expand_stacks(self):
+        self._sync_i_max()
+        stack_length_new = self._stack_length
+        while self._i_max >= stack_length_new:
+            stack_length_new *= 2
+        log_debug(logger, self._log_prefix + "Start stack expansion (%i >= %i) - new stack length will be %i" % (self._i_max, self._stack_length, stack_length_new))
+        AbstractH5Writer._expand_stacks(self, stack_length_new)
 
     def _close_signal(self):
         if self.comm.rank == 0:
