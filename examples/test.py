@@ -9,7 +9,7 @@ from mpi4py import MPI
 import h5writer
 from h5writer import H5WriterMPI, H5Writer
 
-h5writer.logger.setLevel("DEBUG")#"INFO")
+h5writer.logger.setLevel("INFO")
 
 Ws = []
 
