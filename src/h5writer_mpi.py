@@ -114,14 +114,16 @@ class H5WriterMPI(AbstractH5Writer):
         """
         Call this function for writing datasets that have no stack dimension (i.e. no slices).
         """
-        return self._to_solocache(data_dict, target=self._solocache)
+        if self._is_in_communicator():
+            return self._to_solocache(data_dict, target=self._solocache)
         
     def write_solo_mpi_reduce(self, data_dict, op):
         """
         Call this function for writing datasets that have no stack dimension (i.e. no slices).
         Data will be reduced between processes using the given open MPI operator (see for example https://pythonhosted.org/mpi4py/apiref/mpi4py-module.html).
         """
-        return self._to_solocache(data_dict, target=self._solocache, op=op)
+        if self._is_in_communicator():
+            return self._to_solocache(data_dict, target=self._solocache, op=op)
 
     def close(self):
         """

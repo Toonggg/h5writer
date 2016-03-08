@@ -35,6 +35,6 @@ def log(logger, message, lvl, exception=None, rollback=1):
                                                                    code.co_filename, 
                                                                    code.co_firstlineno)
         
-    logcall("\t%i sec\t%s" % (lvl, time.time()-t0, msg))
+    logcall("\t%i sec\t%s" % (time.time()-t0, msg))
     if exception is not None:
         raise exception(message)

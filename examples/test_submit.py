@@ -24,10 +24,11 @@ if __name__ == "__main__":
         s += "#SBATCH --cpus-per-task=1\n"
         s += "#SBATCH -p regular\n"
         s += "#SBATCH --output=%s\n" % output
+        s += "#SBATCH --exclude=c002\n"
         cmd = ""
         cmd += "mpirun -n %i " % n
-        cmd += "--mca btl_openib_connect_udcm_timeout 5000000 "
-        #cmd += "--mca btl ^openip "
+        #cmd += "--mca btl_openib_connect_udcm_timeout 5000000 "
+        cmd += "--mca btl ^openib "
         cmd += "%s/test.py %i" % (this_dir, i)
         cmd += "\n"
         s += cmd
