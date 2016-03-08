@@ -89,8 +89,9 @@ class AbstractH5Writer:
         keys.sort()
         for k in keys:
             name = group_prefix + k
-            if isinstance(self._f[name], h5py.Dataset) and self._is_stack(name):
-                self._expand_stack(stack_length, name)
+            if isinstance(self._f[name], h5py.Dataset):
+                if self._is_stack(name):
+                    self._expand_stack(stack_length, name)
             else:
                 self._expand_stacks(stack_length, name + "/")
         self._stack_length = stack_length
@@ -100,8 +101,11 @@ class AbstractH5Writer:
         new_shape[0] = stack_length
         new_shape = tuple(new_shape)
         log_info(logger, self._log_prefix + "Expand dataset %s [old shape: %s, new shape: %s]" % (name, str(self._f[name].shape), str(new_shape)))
+        t0 = time.time()
         self._f[name].resize(new_shape)
-            
+        t1 = time.time()
+        log_debug(logger, self._log_prefix + "expansion time: %f sec (HDF5)" % (t1-t0))
+        
     def _shrink_stacks(self, group_prefix="/"):
         stack_length = self._i_max + 1
         if stack_length == 0:
@@ -122,6 +126,9 @@ class AbstractH5Writer:
                 s.pop(0)
                 s.insert(0, stack_length)
                 s = tuple(s)
+                t0 = time.time()
                 self._f[name].resize(s)
+                t1 = time.time()
+                log_debug(logger, self._log_prefix + "Shrinking time: %f sec (HDF5)" % (t1-t0))
             else:
                 self._shrink_stacks(name + "/")
