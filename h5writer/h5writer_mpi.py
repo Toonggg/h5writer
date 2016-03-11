@@ -27,9 +27,10 @@ class H5WriterMPI(AbstractH5Writer):
         self.comm = comm
         # This "if" avoids that processes that are not in the communicator (like the master process of hummingbird) interact with the file and block
         if not self._is_in_communicator():
+            log_warning(logger, "This process cannot write.")
             return
         # Logging
-        self._log_prefix = "(%i) " %  self.comm.rank
+        self._log_prefix = "(%03i) " %  self.comm.rank
         # Index
         self._i = -self.comm.size + self.comm.rank
         self._i_max = -1
@@ -37,44 +38,23 @@ class H5WriterMPI(AbstractH5Writer):
         self._expand_flag = False
         # Chache
         self._solocache = {}
-        # Initialise Ibcast
-        self._ibcast_buffers = []
-        self._ibcast_requests = []
-        self._init_ibcast()
         # Status
         self._ready = False
         # Open file
         if os.path.exists(self._filename):
             log_warning(logger, self._log_prefix + "File %s exists and is being overwritten" % (self._filename))
-        sys.stdout.flush()
         self.comm.Barrier()
         self._f = h5py.File(self._filename, "w", driver='mpio', comm=self.comm)
+        self._f.atomic = True
         self.comm.Barrier()
         log_debug(logger, self._log_prefix + "File successfully opened for parallel writing.")
-
-    def _init_ibcast(self):
-        if len(self._ibcast_requests) > 0:
-            for i in range(self.comm.size):
-                if self._ibcast_requests[i] is not None:
-                    # Clean up MPI resources for ibcasts
-                    self._ibcast_requests[i].Cancel()
-                    self._ibcast_requests[i].Test()
-                    #self._ibcast_requests[i].Free()
-        self._ibcast_buffers = []
-        self._ibcast_requests = []
-        for i in range(self.comm.size):
-            self._ibcast_buffers.append(numpy.empty(1, dtype='i'))
-            if i != self.comm.rank:
-                self._ibcast_requests.append(self.comm.Ibcast([self._ibcast_buffers[-1], MPI.INT], root=i))
-            else:
-                self._ibcast_requests.append(None)
-            self.comm.Barrier()
         
     def write_slice(self, data_dict):
         """
         Call this function for writing all data in data_dict as a slice of stacks (first dimension = stack dimension).
         Dictionaries within data_dict are represented as HDF5 groups. The slice index is either the next one.
         """
+
         # Initialise of tree (groups and datasets)
         if not self._initialised:
             self.comm.Barrier()
@@ -89,25 +69,12 @@ class H5WriterMPI(AbstractH5Writer):
         # Update of maximum index
         if self._i > self._i_max:
             self._i_max = self._i
-        # Expansion of stacks needded?
-        if self._i >= self._stack_length:
-            self._expand_signal()
-        # Otherwise enter poll for other processes that might need stack expansion?
-        else:
-            self._expand_poll()
-        sys.stdout.flush()
-        # Do expansion if needed
-        if self._expand_flag:
-            self.comm.Barrier()
-            self._sync_i_max()
-            sys.stdout.flush()
-            self.comm.Barrier()
-            self._expand_stacks_mpi()
-            sys.stdout.flush()
-            self.comm.Barrier()
-            self._expand_flag = False
+        # Enter poll for other processes that might need stack expansion?
+        self._expand_poll()
+        log_debug(logger, self._log_prefix + "Write")
         # Write data
         self._write_group(data_dict)
+        log_debug(logger, self._log_prefix + "Written")
         sys.stdout.flush()
 
     def write_solo(self, data_dict):
@@ -137,47 +104,42 @@ class H5WriterMPI(AbstractH5Writer):
             log_and_raise_error(logger, "Cannot close uninitialised file. Every worker has to write at least one frame to file. Reduce your number of workers and try again.")
             exit(1)
         self._close_signal()
-        log_info(logger, self._log_prefix + "Rank %i enters closing loop" % (self.comm.rank))
+        log_debug(logger, self._log_prefix + "Enter closing loop")
         while True:
-            #log_debug(logger, self._log_prefix + "Closing loop")
             self._expand_poll()
             self._update_ready()
             if self._ready:
                 break
+            time.sleep(0.1)
+        log_debug(logger, self._log_prefix + "Leave closing loop")
 
         self.comm.Barrier()
         log_debug(logger, self._log_prefix + "Sync stack length")
         self._sync_i_max()
 
-        log_debug(logger, self._log_prefix + "Shrink stacks")
         self.comm.Barrier()
-        #log_debug(logger, self._log_prefix + "Shrink stacks B1")
-        self._shrink_stacks()
-        #log_debug(logger, self._log_prefix + "Shrink stacks B2")
-        self.comm.Barrier()
-        #log_debug(logger, self._log_prefix + "Shrink stacks B3")
-
         log_debug(logger, self._log_prefix + "Closing file %s for parallel writing." % (self._filename))
         self._f.close()
         log_debug(logger, self._log_prefix + "File %s closed for parallel writing." % (self._filename))
 
-        log_debug(logger, self._log_prefix + "Write solo cache to file %s" % (self._filename))
         if self._is_master():
+            log_debug(logger, self._log_prefix + "Opening file %s for single-process writing." % (self._filename))
             self._f = h5py.File(self._filename, "r+")
+            log_debug(logger, self._log_prefix + "Shrink stacks")
+            self._resize_stacks(self._i_max + 1)
+            
         self._write_solocache_group_to_file(self._solocache)
-        if self._is_master():
-            self._f.close()
-        log_debug(logger, self._log_prefix + "Solo cache written to file %s" % (self._filename))
 
-        log_info(logger, self._log_prefix + "HDF5 parallel writer instance for file %s closed." % (self._filename))
+        if self._is_master():
+            log_debug(logger, self._log_prefix + "Closing file %s for single-process writing." % (self._filename))
+            self._f.close()
+            log_info(logger, self._log_prefix + "HDF5 parallel writer instance for file %s closed." % (self._filename))
     
     def _is_in_communicator(self):
         try:
             out = self.comm.rank != MPI.UNDEFINED
         except MPI.Exception:
             out = False
-        if not out:
-            log_warning(logger, "This process cannot write.")
         return out
             
     def _is_master(self):
@@ -223,38 +185,57 @@ class H5WriterMPI(AbstractH5Writer):
                     log_debug(logger, self._log_prefix + "Writing data %s" % (name))
                     self._f[name] = data
         
-    def _expand_signal(self):
-        log_debug(logger, self._log_prefix + "Send expand signal")
-        self._ibcast_buffers[self.comm.rank] = numpy.array(self._i, dtype='i')
-        self._ibcast_requests[self.comm.rank] = self.comm.Ibcast([self._ibcast_buffers[self.comm.rank], MPI.INT], root=self.comm.rank)
-        while True:
-            for i in range(self.comm.size):
-                # Check request of Ibcast call
-                if self._ibcast_requests[i].Test():
-                    #self._ibcast_requests[i].Free()
-                    self._ibcast_requests[i] = None
-                    self._expand_flag = True
-                    return
-
     def _expand_poll(self):
-        for i in range(self.comm.size):
-            if i != self.comm.rank:
-                # Check request of Ibcast call
-                if self._ibcast_requests[i].Test():
-                    #self._ibcast_requests[i].Free()
-                    self._ibcast_requests[i] = None
-                    self._expand_flag = True
-                    return
+        #log_debug(logger, self._log_prefix + "Polling for stack expansion")
+        expand = False
+        if self.comm.Iprobe(source=(self.comm.rank-1) % self.comm.size, tag=MPI_TAG_EXPAND):
+            buf1 = numpy.empty(1, dtype='i')
+            self.comm.Recv([buf1, MPI.INT], source=(self.comm.rank-1) %  self.comm.size, tag=MPI_TAG_EXPAND)
+            buf2 = numpy.array(1, dtype='i')
+            self.comm.Send([buf2, MPI.INT], dest=(self.comm.rank+1) %  self.comm.size, tag=MPI_TAG_EXPAND)
+            expand= True
+        # Sending of expansion signal needed?
+        elif self._i >= self._stack_length:
+            buf1 = numpy.array(1, dtype='i')
+            req_s = self.comm.Isend([buf1, MPI.INT], dest=(self.comm.rank+1) %  self.comm.size, tag=MPI_TAG_EXPAND)
+            buf2 = numpy.empty(1, dtype='i')
+            req_r = self.comm.Irecv([buf2, MPI.INT], source=(self.comm.rank-1) %  self.comm.size, tag=MPI_TAG_EXPAND)
+            while True:
+                sent     = req_s.Test()
+                received = req_r.Test()
+                if sent and received:
+                    break
+                time.sleep(0.01)
+            expand = True
+        if expand:
+            log_debug(logger, self._log_prefix + "Do stack expansion")
+            self.comm.Barrier()
+            self._sync_i_max()
+            self._expand_stacks_mpi()
+        else:
+            pass
+            #log_debug(logger, self._log_prefix + "No stack expansion")
 
     def _expand_stacks_mpi(self, i_max=None):
+        self._f.close()
+        log_debug(logger, self._log_prefix + "File closed for stack expansion")
+        self.comm.Barrier()
         if i_max is None:
             i_max = self._i_max
         stack_length_new = self._stack_length
         while i_max >= stack_length_new:
             stack_length_new *= 2
-        log_debug(logger, self._log_prefix + "Start stack expansion (%i >= %i) - new stack length will be %i" % (i_max, self._stack_length, stack_length_new))
+        if self.comm.rank == 0:
+            self._f = h5py.File(self._filename, "r+")
+            log_debug(logger, self._log_prefix + "Start stack expansion (%i >= %i) - new stack length will be %i" % (i_max, self._stack_length, stack_length_new))
+            self._resize_stacks(stack_length_new)
+            self._f.close()
+        self._stack_length = stack_length_new
         self.comm.Barrier()
-        self._expand_stacks(stack_length_new)
+        self._f = h5py.File(self._filename, "r+", driver='mpio', comm=self.comm)
+        self._f.atomic = True
+        self.comm.Barrier()
+        log_debug(logger, self._log_prefix + "File reopened after stack expansion")
         
     def _close_signal(self):
         if self.comm.rank == 0:

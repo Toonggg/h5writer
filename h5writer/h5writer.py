@@ -84,51 +84,29 @@ class AbstractH5Writer:
         a = self._f[name].attrs
         return ("axes" in a.keys() and a["axes"][0].startswith('experiment_identifier'))
     
-    def _expand_stacks(self, stack_length, group_prefix="/"):
-        keys = self._f[group_prefix].keys()
-        keys.sort()
-        for k in keys:
-            name = group_prefix + k
-            if isinstance(self._f[name], h5py.Dataset):
-                if self._is_stack(name):
-                    self._expand_stack(stack_length, name)
-            else:
-                self._expand_stacks(stack_length, name + "/")
-        self._stack_length = stack_length
-            
-    def _expand_stack(self, stack_length, name):
-        new_shape = list(self._f[name].shape)
-        new_shape[0] = stack_length
-        new_shape = tuple(new_shape)
-        log_info(logger, self._log_prefix + "Expand dataset %s [old shape: %s, new shape: %s]" % (name, str(self._f[name].shape), str(new_shape)))
-        t0 = time.time()
-        self._f[name].resize(new_shape)
-        t1 = time.time()
-        log_debug(logger, self._log_prefix + "expansion time: %f sec (HDF5)" % (t1-t0))
-        
-    def _shrink_stacks(self, group_prefix="/"):
-        stack_length = self._i_max + 1
+    def _resize_stacks(self, stack_length, group_prefix="/"):
+        if group_prefix == "/":
+            log_info(logger, self._log_prefix + "Resize datasets to new length: %i" % stack_length)
         if stack_length == 0:
-            log_warning(logger, self._log_prefix + "Cannot shrink stacks to length 0. Skip shrinking stacks.")
+            log_warning(logger, self._log_prefix + "Cannot resize stacks to length 0. Skip resize stacks.")
             return
         keys = self._f[group_prefix].keys()
         keys.sort()
         for k in keys:
             name = group_prefix + k
             if isinstance(self._f[name], h5py.Dataset):
-                if not self._is_stack(name):
-                    return
-                if stack_length < 1:
-                    log_warning(logger, self._log_prefix + "Cannot reduce dataset %s to length %i" % (name, stack_length))
-                    return
-                log_debug(logger, self._log_prefix + "Shrinking dataset %s to stack length %i" % (name, stack_length))
-                s = list(self._f[name].shape)
-                s.pop(0)
-                s.insert(0, stack_length)
-                s = tuple(s)
-                t0 = time.time()
-                self._f[name].resize(s)
-                t1 = time.time()
-                log_debug(logger, self._log_prefix + "Shrinking time: %f sec (HDF5)" % (t1-t0))
+                if self._is_stack(name):
+                    self._resize_stack(stack_length, name)
             else:
-                self._shrink_stacks(name + "/")
+                self._resize_stacks(stack_length, name + "/")
+        self._stack_length = stack_length
+            
+    def _resize_stack(self, stack_length, name):
+        new_shape = list(self._f[name].shape)
+        new_shape[0] = stack_length
+        new_shape = tuple(new_shape)
+        log_debug(logger, self._log_prefix + "Resize dataset %s [old shape: %s, new shape: %s]" % (name, str(self._f[name].shape), str(new_shape)))
+        t0 = time.time()
+        self._f[name].resize(new_shape)
+        t1 = time.time()
+        log_debug(logger, self._log_prefix + "Resizing time: %f sec (HDF5)" % (t1-t0))

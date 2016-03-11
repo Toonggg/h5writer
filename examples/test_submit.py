@@ -28,7 +28,7 @@ if __name__ == "__main__":
         cmd = ""
         cmd += "mpirun -n %i " % n
         #cmd += "--mca btl_openib_connect_udcm_timeout 5000000 "
-        cmd += "--mca btl ^openib "
+        #cmd += "--mca btl ^openib "
         cmd += "%s/test.py %i" % (this_dir, i)
         cmd += "\n"
         s += cmd

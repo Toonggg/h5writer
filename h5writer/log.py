@@ -28,12 +28,12 @@ def log(logger, message, lvl, exception=None, rollback=1):
             # Rolling back in the stack, otherwise it would be this function
             func = func.f_back
         code = func.f_code
-        msg = "%i - %s\n\t=> in \'%s\' function \'%s\' [%s:%i]" % (int(round(time.time()-t0)),
-                                                                   message,
-                                                                   func.f_globals["__name__"],
-                                                                   code.co_name, 
-                                                                   code.co_filename, 
-                                                                   code.co_firstlineno)
+        #msg = "%s\n\t=> in \'%s\' function \'%s\' [%s:%i]" % (message,
+        #                                                      func.f_globals["__name__"],
+        #                                                      code.co_name, 
+        #                                                      code.co_filename, 
+        #                                                      code.co_firstlineno)
+        msg = message
         
     logcall("\t%i sec\t%s" % (time.time()-t0, msg))
     if exception is not None:
