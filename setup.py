@@ -12,14 +12,14 @@ if h5py_av and h5py_mpi_av:
     from setuptools import setup
 
     setup(name='h5writer',
-          version='0.2.0',
+          version='0.4.0',
           description='Writing HDF5 files with openMPI.',
           author='Max F. Hantke, Benedikt Daurer',
           author_email='maxhantke@gmail.com',
           url='https://github.com/mhantke/h5writer',
-          install_requires=['numpy', 'mpi4py>=2.0.0'],
+          #install_requires=['numpy', 'mpi4py>=2.0.0'],
           packages = ['h5writer'],
-          package_dir={'h5writer':'src'},
+          #package_dir={'h5writer':'src'},
     )
     
 else:

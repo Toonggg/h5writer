@@ -18,7 +18,7 @@ class H5Writer(AbstractH5Writer):
     def write_slice(self, data_dict):
         """
         Call this function for writing all data in data_dict as a slice of stacks (first dimension = stack dimension).
-        Dictionaries within data_dict are represented as HDF5 groups. The slice index is either the next one (i=None) or a given integer i.
+        Dictionaries within data_dict are represented as HDF5 groups. The slice index is either the next one.
         """
         if not self._initialised:
             # Initialise of tree (groups and datasets)
@@ -29,9 +29,9 @@ class H5Writer(AbstractH5Writer):
             self._i = 0
         else:
             self._i += 1
+        # Expand stacks if needed
         if self._i >= (self._stack_length-1):
-            # Expand stacks if needed
-            self._expand_stacks(self._stack_length * 2)
+            self._resize_stacks(self._stack_length * 2)
         # Write data
         self._write_group(data_dict)
         # Update of maximum index
@@ -61,7 +61,7 @@ class H5Writer(AbstractH5Writer):
         """
         Close file.
         """
-        self._shrink_stacks()
+        self._resize_stacks(self._i_max + 1)
         self._f.close()
         log_info(logger, self._log_prefix + "HDF5 writer instance for file %s closed." % (self._filename))
         
