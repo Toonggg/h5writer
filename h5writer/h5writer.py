@@ -47,6 +47,8 @@ class AbstractH5Writer:
                 name = group_prefix + k
                 data = D[k]
                 log_debug(logger, self._log_prefix + "Write to dataset %s at stack position %i" % (name, self._i))
+                if name not in self._f:
+                    log_and_raise_error(logger, self._log_prefix + "Write to dataset %s at stack position %i failed because it does not exist. Note that all datasets are initialised from the data of the first write call." % (name, self._i))
                 if numpy.isscalar(data):
                     self._f[name][self._i] = data
                 else:
