@@ -6,7 +6,7 @@ try:
     import h5py
     h5py_av = True
     h5py_mpi_av = h5py.h5.get_config().mpi
-except ImportError:
+except (ImportError, AttributeError):
     h5py_av = False
     h5py_mpi_av = False
         
