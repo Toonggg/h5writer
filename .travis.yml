@@ -11,39 +11,38 @@ virtualenv:
 cache:
   directories:
     - $HOME/.cache/pip
-#    - $HOME/hdf5-1.8.17-linux-centos7-x86_64-gcc485-shared
+
 
 addons:
+
   apt:
+
     sources:
+
       - ubuntu-toolchain-r-test
       - kubuntu-backports
       - couchbase-precise
+
     packages:
+
       - libopenmpi-dev
       - openmpi-bin
       - libhdf5-openmpi-dev
-# Python stuff (for discovering these packages set in virtualenv: system_site_packages: true)
+
+      # Python stuff
+      # (for discovering these packages set in virtualenv: system_site_packages: true)
       - python-numpy
       - python-mpi4py
       - python-h5py
 
-before_install:
-# Install hdf5
-#  - cd $HOME
-#  - if [ ! -d "$HOME/hdf5-1.8.17-linux-centos7-x86_64-gcc485-shared/include" ]; then wget http://www.hdfgroup.org/ftp/HDF5/current/bin/linux-centos7-x86_64-gcc485/hdf5-1.8.17-linux-centos7-x86_64-gcc485-shared.tar.gz && tar xvzf hdf5-1.8.17-linux-centos7-x86_64-gcc485-shared.tar.gz; else echo 'Using hdf5 from cached directory'; fi
-#  - export LD_LIBRARY_PATH=${HOME}/hdf5-1.8.17-linux-centos7-x86_64-gcc485-shared/lib:${LD_LIBRARY_PATH}
 
-install:
-# Install h5py (we want an h5py that is built with the new hdf5 version, that is why)
-#  - export HDF5_DIR=${HOME}/hdf5-1.8.17-linux-centos7-x86_64-gcc485-shared/
-#  - pip install h5py
-# Install mpi4py
-#  - pip install mpi4py
-# Install condor
-  - cd $HOME/build/mhantke/h5writer
-  - python setup.py install
-# command to run tests
-script:
-  # EXAMPLES
-  - cd $HOME/build/mhantke/h5writer/examples; mpirun -n 6 python test.py
+before_install:
+
+  install:
+    # Install h5writer
+    - cd $HOME/build/mhantke/h5writer
+    - python setup.py install
+
+  script:
+    # Test examples
+    - cd $HOME/build/mhantke/h5writer/examples; mpirun -n 6 python test.py
