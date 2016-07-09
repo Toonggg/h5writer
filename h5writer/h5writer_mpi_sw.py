@@ -13,7 +13,7 @@ from h5writer import AbstractH5Writer,logger
 
 class H5WriterMPISW(AbstractH5Writer):
     """
-    HDF5 writer class for MPI. When calling write methods in slave processes (rank>0) data is sent to master process (rank=0) for writing.
+    HDF5 writer class for MPI with a master process (rank=0) reserved for writing and inter-process-communication. Slave processes (rank>0) can call write methods and data is sent to the master process for serial writing.
     """
     def __init__(self, filename, comm, chunksize=100, compression=None):
         if MPI is None:
@@ -127,6 +127,7 @@ class H5WriterMPISW(AbstractH5Writer):
             log_debug("Instance already closed.")
         if not self._is_master():
             self.comm.send("close", dest=0, tag=0)
-        log_info(logger, self._log_prefix + "HDF5 writer instance for file %s closed." % (self._filename))
+        else:
+            log_info(logger, self._log_prefix + "HDF5 writer master process for file %s closed." % (self._filename))
         self._closed = True
         
