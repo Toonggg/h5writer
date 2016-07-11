@@ -46,42 +46,61 @@ class H5WriterMPISW(AbstractH5Writer):
         slices = numpy.zeros(self.comm.size, 'i')
         closed = numpy.zeros(self.comm.size, 'i')
         while True:
-            for source_rank in range(1, self.comm.size):
-                if closed[source_rank]:
-                    continue
-                l = self.comm.recv(source=source_rank, tag=0)
-                if l == "close":
-                    closed[source_rank] = 1
-                    if closed.sum() == self.comm.size-1:
-                        break
-                else:
-                    if "write_slice" in l:
-                        log_debug(logger, "Write slice to file")
-                        t0 = time.time()
-                        self._write_slice_master(l["write_slice"], i=slices[source_rank]*(self.comm.size-1)+source_rank-1)
-                        slices[source_rank] += 1
-                        t1 = time.time()
-                        t_log = t1-t0
-                        log_info(logger, "Datarate %.1f Hz; slice %i; logging %.2f sec" % (slices.sum()/(time.time()-t_start),slices.sum(),t_log))
-                    if "write_solo" in l:
-                        log_debug(logger, "Write solo to file")
-                        self.write_solo(l["write_solo"])
-            if closed.sum() == self.comm.size-1:
-                break
+            status = MPI.Status()
+            l = self.comm.recv(source=MPI.ANY_SOURCE, tag=0, status=status)
+            source = status.Get_source()
+            if l == "close":
+                closed[source] = 1
+                if closed.sum() == self.comm.size-1:
+                    break
+            else:
+                self._transfer_numpy_arrays(l, source=source)
+                if "write_slice" in l:
+                    log_debug(logger, "Write slice to file")
+                    t0 = time.time()
+                    self._write_slice_master(l["write_slice"], i=slices[source]*(self.comm.size-1)+source-1)
+                    slices[source] += 1
+                    t1 = time.time()
+                    t_log = t1-t0
+                    log_info(logger, "Writing rate %.1f Hz; slice %i; logging %.2f sec" % (slices.sum()/(time.time()-t_start),slices.sum(),t_log))
+                if "write_solo" in l:
+                    log_debug(logger, "Write solo to file")
+                    self.write_solo(l["write_solo"])
 
         log_debug(logger, "Master writer is closing.")
         self._resize_stacks(self._i_max + 1)
         self._f.close()
         log_debug(logger, "File %s closed." % self._filename)
-        
                         
+    def _send_for_writing(self, data_dict):
+        """
+        Sending data dictionaries to master process without pickeling numpy arrays.
+        """
+        skeleton = _make_skeleton(data_dict)
+        self.comm.send(skeleton, dest=0, tag=0)
+        self._transfer_numpy_arrays(skeleton, data_dict)
+
+    def _transfer_numpy_arrays(self, skeleton, data_dict=None, source=None):
+        mode = 'master' if data_dict is None else 'slave' 
+        keys = skeleton.keys()
+        keys.sort()
+        for k in keys:
+            if isinstance(skeleton[k], dict):
+                self._transfer_numpy_arrays(skeleton[k], None if mode == 'master' else data_dict[k], source=source)
+            elif isinstance(skeleton[k], _ArrayDescriptor):
+                if mode == 'master':
+                    skeleton[k] = numpy.empty(shape=skeleton[k].shape, dtype=skeleton[k].dtype)
+                    self.comm.Recv(skeleton[k], source=source, tag=0)
+                else:
+                    self.comm.Send(data_dict[k], dest=0, tag=0)
+
     def write_slice(self, data_dict):
         """
         Call this function for writing all data in data_dict as a stack of slices (first dimension = stack dimension).
         Dictionaries within data_dict are represented as HDF5 groups. The slice index is either the next one.
         """
-        self.comm.send({"write_slice": data_dict}, dest=0, tag=0)
-
+        self._send_for_writing({"write_slice": data_dict})
+        
     def _write_slice_master(self, data_dict, i):
         if not self._initialised:
             # Initialise of tree (groups and datasets)
@@ -100,7 +119,7 @@ class H5WriterMPISW(AbstractH5Writer):
         """
         Call this function for writing datasets that have no stack dimension (i.e. no slices).
         """
-        self.comm.send({"write_solo": data_dict}, dest=0, tag=0)
+        self._send_for_writing({"write_solo": data_dict})
         
     def _write_solo_master(self, data_dict):
         self._write_solo_group(data_dict)
@@ -131,3 +150,22 @@ class H5WriterMPISW(AbstractH5Writer):
             log_info(logger, self._log_prefix + "HDF5 writer master process for file %s closed." % (self._filename))
         self._closed = True
         
+def _make_skeleton(data_dict):
+    skeleton = {}
+    keys = data_dict.keys()
+    keys.sort()
+    for k in keys:
+        v = data_dict[k]
+        if isinstance(v, dict):
+            skeleton[k] = _make_skeleton(v)
+        else:
+            if isinstance(v, numpy.ndarray):
+                skeleton[k] = _ArrayDescriptor(v)
+            else:
+                skeleton[k] = v
+    return skeleton
+
+class _ArrayDescriptor:
+    def __init__(self, ndarray):
+        self.dtype = ndarray.dtype
+        self.shape = ndarray.shape
