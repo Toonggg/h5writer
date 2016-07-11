@@ -23,19 +23,18 @@ class H5WriterMPISW(AbstractH5Writer):
         if not isinstance(self.comm, MPI.Comm):
             log_and_raise_error(logger, "Cannot initialise H5WriterMPI instance. \'%s\' is not an mpi4py.MPI.Comm instance." % str(self.comm))
         AbstractH5Writer.__init__(self, filename, chunksize=chunksize, compression=compression)
+        self._closed = False
         if self._is_master():
             if os.path.exists(self._filename):
                 log_warning(logger, self._log_prefix + "File %s exists and is being overwritten" % (self._filename))
             self._f = h5py.File(self._filename, "w")
             self._master_loop()
-        self._closed = False
             
     def _is_in_communicator(self):
         try:
-            out = self.comm.rank != MPI.UNDEFINED
+            return self.comm.rank != MPI.UNDEFINED
         except MPI.Exception:
-            out = False
-        return out
+            return False
             
     def _is_master(self):
         return (self._is_in_communicator() and self.comm.rank == 0)
@@ -46,13 +45,21 @@ class H5WriterMPISW(AbstractH5Writer):
         slices = numpy.zeros(self.comm.size, 'i')
         closed = numpy.zeros(self.comm.size, 'i')
         while True:
+
             status = MPI.Status()
             l = self.comm.recv(source=MPI.ANY_SOURCE, tag=0, status=status)
             source = status.Get_source()
+
+            if source == 0:
+                logger.warning('Received write package from master process! Skipping writing.')
+                print l
+                continue
+
             if l == "close":
                 closed[source] = 1
                 if closed.sum() == self.comm.size-1:
                     break
+
             else:
                 self._transfer_numpy_arrays(l, source=source)
                 if "write_slice" in l:
@@ -65,7 +72,7 @@ class H5WriterMPISW(AbstractH5Writer):
                     log_info(logger, "Writing rate %.1f Hz; slice %i; logging %.2f sec" % (slices.sum()/(time.time()-t_start),slices.sum(),t_log))
                 if "write_solo" in l:
                     log_debug(logger, "Write solo to file")
-                    self.write_solo(l["write_solo"])
+                    self._write_solo_master(l["write_solo"])
 
         log_debug(logger, "Master writer is closing.")
         self._resize_stacks(self._i_max + 1)
@@ -78,7 +85,7 @@ class H5WriterMPISW(AbstractH5Writer):
         """
         skeleton = _make_skeleton(data_dict)
         self.comm.send(skeleton, dest=0, tag=0)
-        self._transfer_numpy_arrays(skeleton, data_dict)
+        self._transfer_numpy_arrays(skeleton=skeleton, data_dict=data_dict)
 
     def _transfer_numpy_arrays(self, skeleton, data_dict=None, source=None):
         mode = 'master' if data_dict is None else 'slave' 
@@ -100,6 +107,7 @@ class H5WriterMPISW(AbstractH5Writer):
         Dictionaries within data_dict are represented as HDF5 groups. The slice index is either the next one.
         """
         self._send_for_writing({"write_slice": data_dict})
+        #self.comm.send({"write_slice": data_dict}, dest=0, tag=0)
         
     def _write_slice_master(self, data_dict, i):
         if not self._initialised:
@@ -108,7 +116,7 @@ class H5WriterMPISW(AbstractH5Writer):
             self._initialised = True        
         self._i = i
         # Expand stacks if needed
-        if self._i >= (self._stack_length-1):
+        while self._i >= (self._stack_length-1):
             self._resize_stacks(self._stack_length * 2)
         # Write data
         self._write_group(data_dict)
@@ -120,6 +128,7 @@ class H5WriterMPISW(AbstractH5Writer):
         Call this function for writing datasets that have no stack dimension (i.e. no slices).
         """
         self._send_for_writing({"write_solo": data_dict})
+        #self.comm.send({"write_solo": data_dict}, dest=0, tag=0)
         
     def _write_solo_master(self, data_dict):
         self._write_solo_group(data_dict)
