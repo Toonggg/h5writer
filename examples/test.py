@@ -54,7 +54,6 @@ def main():
             O = {}
             grp = "parameters%i" % rank
             O[grp] = {}
-            print rank,size
             O[grp]["rank_and_size"] = [rank, size]
             W.write_solo(O)
             
