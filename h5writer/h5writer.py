@@ -6,6 +6,8 @@ logger = logging.getLogger(__name__)
 
 from log import log_and_raise_error, log_warning, log_info, log_debug
 
+CHUNKSIZE_MIN_IN_BYTES = 16000000
+
 class AbstractH5Writer:
     def __init__(self, filename, chunksize, compression):
         self._filename = os.path.expandvars(filename)        
@@ -72,13 +74,22 @@ class AbstractH5Writer:
             maxshape = tuple([None]+list(data.shape))
             shape = tuple([self._chunksize]+list(data.shape))
             dtype = data.dtype
+            nbytes_chunk = numpy.array(list(shape)).prod() * dtype.itemsize
+            if nbytes_chunk > CHUNKSIZE_MIN_IN_BYTES:
+                chunksize = self._chunksize
+                #log_debug(logger, self._log_prefix + "Do not increase chunksize (%i) for dataset %s (%i bytes for single data frame)" % (self._chunksize, name, nbytes_chunk))
+            else:
+                nbytes_single = numpy.array(list(shape))[1:].prod() * dtype.itemsize
+                chunksize = int(numpy.ceil(float(CHUNKSIZE_MIN_IN_BYTES) / float(nbytes_single)))
+                log_debug(logger, self._log_prefix + "Increase chunksize from %i to %i for dataset %s (only %i bytes for single data frame)" % (self._chunksize, chunksize, name, nbytes_chunk))
+            chunks = tuple([chunksize]+list(data.shape))
             ndim = data.ndim
             axes = "experiment_identifier"
             if ndim == 1: axes = axes + ":x"
             elif ndim == 2: axes = axes + ":y:x"
             elif ndim == 3: axes = axes + ":z:y:x"
-        log_debug(logger, self._log_prefix + "Create dataset %s [shape=%s, dtype=%s]" % (name, str(shape), str(dtype)))
-        self._f.create_dataset(name, shape, maxshape=maxshape, dtype=dtype, **self._create_dataset_kwargs)
+        log_debug(logger, self._log_prefix + "Create dataset %s [shape=%s, chunks=%s, dtype=%s]" % (name, str(shape), str(chunks), str(dtype)))
+        self._f.create_dataset(name, shape, maxshape=maxshape, dtype=dtype, chunks=chunks, **self._create_dataset_kwargs)
         self._f[name].attrs.modify("axes",[axes])
         return 0
 
