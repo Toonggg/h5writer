@@ -29,7 +29,7 @@ addons:
       - libopenmpi-dev
       - openmpi-bin
       #- libhdf5-openmpi-dev
-      - libhdf5-dev
+      - libhdf5-serial-dev
 
       # Python stuff
       # (for discovering these packages set in virtualenv: system_site_packages: true)
