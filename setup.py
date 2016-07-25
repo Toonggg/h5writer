@@ -8,7 +8,7 @@ setup(name='h5writer',
       author='Max F. Hantke, Benedikt Daurer, Filipe R. N. C. Maia',
       author_email='maxhantke@gmail.com',
       url='https://github.com/mhantke/h5writer',
-      install_requires=['h5py>=1.2.1'],
+      install_requires=['h5py>=2.2'],
       extras_require={'mpi': 'mpi4py>=1.0'},
       packages = ['h5writer'],
 )
