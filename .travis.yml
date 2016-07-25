@@ -28,11 +28,13 @@ addons:
       # Python stuff
       # (for discovering these packages set in virtualenv: system_site_packages: true)
       - python-numpy
+      # Need newer version of mpi4py, therefore need to install this with pip later
       #- python-mpi4py
       - python-h5py
 
 
 before_install:
+
   - pip install --user mpi4py
 
 install:
@@ -42,5 +44,6 @@ install:
 
 script:
 # Test examples
+  - pyhton -c "import mpi4py; print mpi4py.__version__"
   - cd $HOME/build/mhantke/h5writer/examples; python test.py
   - cd $HOME/build/mhantke/h5writer/examples; mpirun -n 6 python test.py
