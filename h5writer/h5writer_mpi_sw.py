@@ -97,9 +97,9 @@ class H5WriterMPISW(AbstractH5Writer):
             elif isinstance(skeleton[k], _ArrayDescriptor):
                 if mode == 'master':
                     skeleton[k] = numpy.empty(shape=skeleton[k].shape, dtype=skeleton[k].dtype)
-                    self.comm.Recv(skeleton[k], source=source, tag=0)
+                    self.comm.Recv(skeleton[k].data, source=source, tag=0)
                 else:
-                    self.comm.Send(data_dict[k], dest=0, tag=0)
+                    self.comm.Send(numpy.ascontiguousarray(data_dict[k]).data, dest=0, tag=0)
 
     def write_slice(self, data_dict):
         """
