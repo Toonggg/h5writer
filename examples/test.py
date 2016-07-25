@@ -7,7 +7,11 @@ import time
 import numpy
 import h5py
 
-from mpi4py import MPI
+try:
+    from mpi4py import MPI
+except ImportError:
+    MPI = None
+
 import h5writer
 from h5writer import H5Writer, H5WriterMPISW
 
@@ -27,10 +31,16 @@ else:
     filename_mpisw = "%s/test_mpisw.h5" % outdir
     
 
-comm = MPI.COMM_WORLD
-rank = comm.rank
-size = comm.size
-master = comm.rank == 0
+if MPI is None:
+    comm = None
+    rank = 0
+    size = 1
+    master = True
+else:
+    comm = MPI.COMM_WORLD
+    rank = comm.rank
+    size = comm.size
+    master = comm.rank == 0
     
 def main():
 
@@ -40,9 +50,8 @@ def main():
     
     Ws = []
 
-    if MPI.COMM_WORLD.size > 1:
-        tmp = H5WriterMPISW(filename=filename_mpisw, comm=MPI.COMM_WORLD, chunksize=3)
-        Ws.append(tmp)
+    if MPI is not None and MPI.COMM_WORLD.size > 1:
+        Ws.append(H5WriterMPISW(filename=filename_mpisw, comm=MPI.COMM_WORLD, chunksize=3))
 
     if master:
         Ws.append(H5Writer(filename_no_mpi, chunksize=2))
@@ -60,7 +69,7 @@ def main():
                 O = {}
                 O["entry_1"] = {}
                 O["entry_1"]["data_1"] = {}
-                O["entry_1"]["data_1"]["ones"] = numpy.ones(shape=(N_ones,N_ones))
+                O["entry_1"]["data_1"]["ones"] = numpy.ones(shape=(N_ones,N_ones), dtype=numpy.float16)
                 O["entry_1"]["data_2"] = {}
                 O["entry_1"]["data_2"]["zeros"] = numpy.zeros(shape=(N_zeros,N_zeros))
                 O["rank"] = rank
@@ -115,7 +124,7 @@ def main():
                     assert f["/parameters%i/rank_and_size" % i][0] == i
                     assert f["/parameters%i/rank_and_size" % i][1] == size
                     #assert f["/rank"][i] == i
-                    assert f["/size"][i] == size
+                    assert f["/size"][i] == size                    
 
     return 0
             
@@ -129,15 +138,13 @@ def main():
 err = main()
 
 if err == 0:
-    if  master:
-        print "All tests successful!"
+    if master:
+        if MPI is None or MPI.COMM_WORLD.size == 1:
+            print "Tested only serial version."
+            print "(For testing MPI execute for example: mpirun -n 4 python test.py)"
+        else:
+            print "Tested both serial and MPI version."
+        print "Tests successful!"
 else:
     print "Failed!"
     
-
-if MPI.COMM_WORLD.size == 1:
-    print "*"*100
-    print "!!! WARNING: MPI COMMUNICATOR HAS SIZE 1. CANNOT PERFORM MPI TESTS WITH THIS CONFIGURATION."
-    print "TRY FOR EXAMPLE:"
-    print "\t $ mpirun -n 4 python test.py"
-    print "*"*100
