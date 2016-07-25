@@ -2,6 +2,8 @@
 __pycache__/
 *.py[cod]
 *$py.class
+.fuse_hidden*
+*.h5
 
 # C extensions
 *.so
