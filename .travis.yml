@@ -18,12 +18,6 @@ addons:
 
   apt:
 
-    #sources:
-    #
-    #      - ubuntu-toolchain-r-test
-    #  - kubuntu-backports
-    #  - couchbase-precise
-
     packages:
 
       - libopenmpi-dev
@@ -34,11 +28,12 @@ addons:
       # Python stuff
       # (for discovering these packages set in virtualenv: system_site_packages: true)
       - python-numpy
-      - python-mpi4py
+      #- python-mpi4py
       - python-h5py
 
 
-#before_install:
+before_install:
+  - pip install --user mpi4py
 
 install:
 # Install h5writer
