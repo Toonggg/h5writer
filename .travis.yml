@@ -33,7 +33,7 @@ addons:
       - python-h5py
 
 
-before_install:
+#before_install:
 
   #- pip install --user mpi4py
 
