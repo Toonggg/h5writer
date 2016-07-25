@@ -8,8 +8,8 @@ from h5writer import AbstractH5Writer,logger
 try:
     import mpi4py
     mpi4py_version_min = '1.3.1'
-    v1,v2,v2 = (int(v) for v in mpi4py.__version__.split("."))
-    v1_min,v2_min,v2_min = (int(v) for v in mpi4py_version_min.split("."))
+    v1,v2,v2 = [int(v) for v in mpi4py.__version__.split(".")]
+    v1_min,v2_min,v2_min = [int(v) for v in mpi4py_version_min.split(".")]
     if v1 < v1_min and v2 < v2_min and v3 < v3_min:
         log_warning(logger, "Version of mpi4py is too old (currently installed: %s). Please install version at least version %s or more recent." % (mpi4py.__version__, mpi4py_version_min))
         MPI = None
