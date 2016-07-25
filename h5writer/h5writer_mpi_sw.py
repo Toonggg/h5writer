@@ -2,11 +2,17 @@ import numpy, os, time
 import h5py
 
 try:
-    from mpi4py import MPI
-except:
-    log_warning(logger, "Cannot import mpi4py!")    
+    import mpi4py
+    if int(mpi4py.__version__.split(".")[0]) < 2:
+        log_warning(logger, "Version of mpi4py is too old (currently installed: %s). Please install version at least version 2.0.0 or more recent." % mpi4py.__version__)
+        MPI = None
+    else:
+        MPI = mpi4py.MPI
+except ImportError:
+    log_warning(logger, "Cannot import mpi4py.")
     MPI = None
-    
+
+
 from log import log_and_raise_error, log_warning, log_info, log_debug
 
 from h5writer import AbstractH5Writer,logger
@@ -17,7 +23,7 @@ class H5WriterMPISW(AbstractH5Writer):
     """
     def __init__(self, filename, comm, chunksize=100, compression=None):
         if MPI is None:
-            log_and_raise_error(logger, "Could not import MPI and hence cannot initialise H5WriterMPI instance.")
+            log_and_raise_error(logger, "Could not import mpi4py or too old version. Therefore cannot initialise H5WriterMPISW instance.")
             return
         self.comm = comm
         if not isinstance(self.comm, MPI.Comm):
@@ -45,7 +51,10 @@ class H5WriterMPISW(AbstractH5Writer):
         slices = numpy.zeros(self.comm.size, 'i')
         closed = numpy.zeros(self.comm.size, 'i')
         while True:
+            
+            t0 = time.time()
 
+            # Transfer data and metadata for numpy arrays that do not need to be pickled
             status = MPI.Status()
             l = self.comm.recv(source=MPI.ANY_SOURCE, tag=0, status=status)
             source = status.Get_source()
@@ -61,19 +70,34 @@ class H5WriterMPISW(AbstractH5Writer):
                     break
 
             else:
+                # Transfer data without pickling
                 self._transfer_numpy_arrays(l, source=source)
+
+                t1 = time.time()
+                t_wait_and_recv = t1 - t0
+
                 if "write_slice" in l:
-                    log_debug(logger, "Write slice to file")
+                    
                     t0 = time.time()
+
+                    # WRITE SLICE TO FILE
+                    log_debug(logger, "Write slice to file")
                     self._write_slice_master(l["write_slice"], i=slices[source]*(self.comm.size-1)+source-1)
                     slices[source] += 1
+                    # --
+                    
                     t1 = time.time()
-                    t_log = t1-t0
-                    log_info(logger, "Writing rate %.1f Hz; slice %i; logging %.2f sec" % (slices.sum()/(time.time()-t_start),slices.sum(),t_log))
+                    t_write = t1 - t0
+
+                    log_info(logger, "Writing rate %.1f Hz; slice %i (writing %.2f sec; receiving %.2f sec)" % (slices.sum()/(time.time()-t_start),slices.sum(),t_write,t_wait_and_recv))
+
                 if "write_solo" in l:
+
+                    # WRITE SOLO TO FILE
                     log_debug(logger, "Write solo to file")
                     self._write_solo_master(l["write_solo"])
-
+                    # --
+                    
         log_debug(logger, "Master writer is closing.")
         self._resize_stacks(self._i_max + 1)
         self._f.close()
@@ -92,7 +116,6 @@ class H5WriterMPISW(AbstractH5Writer):
         keys = skeleton.keys()
         keys.sort()
         for k in keys:
-            print "LOOPING", k
             if isinstance(skeleton[k], dict):
                 self._transfer_numpy_arrays(skeleton[k], None if mode == 'master' else data_dict[k], source=source)
             elif isinstance(skeleton[k], _ArrayDescriptor):
@@ -100,7 +123,6 @@ class H5WriterMPISW(AbstractH5Writer):
                     skeleton[k] = numpy.empty(shape=skeleton[k].shape, dtype=skeleton[k].dtype)
                     self.comm.Recv(skeleton[k].data, source=source, tag=0)
                 else:
-                    print "SENDING",data_dict, k
                     self.comm.Send(numpy.ascontiguousarray(data_dict[k]).data, dest=0, tag=0)
 
     def write_slice(self, data_dict):
