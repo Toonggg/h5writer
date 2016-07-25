@@ -5,12 +5,11 @@ from log import log_and_raise_error, log_warning, log_info, log_debug
 
 from h5writer import AbstractH5Writer,logger
 
+from distutils.version import StrictVersion
 try:
     import mpi4py
     mpi4py_version_min = '1.3.1'
-    v1,v2,v2 = [int(v) for v in mpi4py.__version__.split(".")]
-    v1_min,v2_min,v2_min = [int(v) for v in mpi4py_version_min.split(".")]
-    if v1 < v1_min and v2 < v2_min and v3 < v3_min:
+    if StrictVersion(mpi4py.__version__) < StrictVersion(mpi4py_version_min):
         log_warning(logger, "Version of mpi4py is too old (currently installed: %s). Please install version at least version %s or more recent." % (mpi4py.__version__, mpi4py_version_min))
         MPI = None
     else:
@@ -55,13 +54,15 @@ class H5WriterMPISW(AbstractH5Writer):
         closed = numpy.zeros(self.comm.size, 'i')
         while True:
             
-            t0 = time.time()
 
             # Transfer data and metadata for numpy arrays that do not need to be pickled
+            t0 = time.time()
             status = MPI.Status()
             l = self.comm.recv(source=MPI.ANY_SOURCE, tag=0, status=status)
             source = status.Get_source()
-
+            t1 = time.time()
+            t_wait = t1 - t0
+            
             if source == 0:
                 logger.warning('Received write package from master process! Skipping writing.')
                 print l
@@ -73,11 +74,12 @@ class H5WriterMPISW(AbstractH5Writer):
                     break
 
             else:
+                t0 = time.time()
                 # Transfer data without pickling
                 self._transfer_numpy_arrays(l, source=source)
 
                 t1 = time.time()
-                t_wait_and_recv = t1 - t0
+                t_recv = t1 - t0
 
                 if "write_slice" in l:
                     
@@ -92,7 +94,7 @@ class H5WriterMPISW(AbstractH5Writer):
                     t1 = time.time()
                     t_write = t1 - t0
 
-                    log_info(logger, "Writing rate %.1f Hz; slice %i (writing %.2f sec; receiving %.2f sec)" % (slices.sum()/(time.time()-t_start),slices.sum(),t_write,t_wait_and_recv))
+                    log_info(logger, "Writing rate %.1f Hz; slice %i (writing %.4f sec; waiting %.4f sec, receiving %.4f sec)" % (slices.sum()/(time.time()-t_start),slices.sum(),t_write,t_wait,t_recv))
 
                 if "write_solo" in l:
 
@@ -111,8 +113,16 @@ class H5WriterMPISW(AbstractH5Writer):
         Sending data dictionaries to master process without pickeling numpy arrays.
         """
         skeleton = _make_skeleton(data_dict)
+        t0 = time.time()
         self.comm.send(skeleton, dest=0, tag=0)
+        t1 = time.time()
+        t_wait = t1 - t0
+        t0 = time.time()
         self._transfer_numpy_arrays(skeleton=skeleton, data_dict=data_dict)
+        t1 = time.time()
+        t_send = t1 - t0
+
+        log_info(logger, "waiting %.4f sec / sending  %.4f sec)" % (t_wait, t_send))
 
     def _transfer_numpy_arrays(self, skeleton, data_dict=None, source=None):
         mode = 'master' if data_dict is None else 'slave' 
