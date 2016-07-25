@@ -1,6 +1,10 @@
 import numpy, os, time
 import h5py
 
+from log import log_and_raise_error, log_warning, log_info, log_debug
+
+from h5writer import AbstractH5Writer,logger
+
 try:
     import mpi4py
     if int(mpi4py.__version__.split(".")[0]) < 2:
@@ -12,10 +16,6 @@ except ImportError:
     log_warning(logger, "Cannot import mpi4py.")
     MPI = None
 
-
-from log import log_and_raise_error, log_warning, log_info, log_debug
-
-from h5writer import AbstractH5Writer,logger
 
 class H5WriterMPISW(AbstractH5Writer):
     """
