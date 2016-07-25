@@ -29,13 +29,13 @@ addons:
       # (for discovering these packages set in virtualenv: system_site_packages: true)
       - python-numpy
       # Need newer version of mpi4py, therefore need to install this with pip later
-      #- python-mpi4py
+      - python-mpi4py
       - python-h5py
 
 
 before_install:
 
-  - pip install --user mpi4py
+  #- pip install --user mpi4py
 
 install:
 # Install h5writer
