@@ -123,7 +123,6 @@ class H5WriterMPISW(AbstractH5Writer):
                 self._transfer_numpy_arrays(skeleton[k], None if mode == 'master' else data_dict[k], source=source)
             elif isinstance(skeleton[k], _ArrayDescriptor):
                 if mode == 'master':
-                    print skeleton[k].shape, skeleton[k].dtype
                     skeleton[k] = numpy.empty(shape=skeleton[k].shape, dtype=skeleton[k].dtype)
                     self.comm.Recv(skeleton[k].data, source=source, tag=0)
                 else:
