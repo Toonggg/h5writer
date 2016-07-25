@@ -7,7 +7,7 @@ from h5writer import AbstractH5Writer,logger
 
 try:
     import mpi4py
-    if int(mpi4py.__version__.split(".")[0]) < 2:
+    if False:#int(mpi4py.__version__.split(".")[0]) < 2:
         log_warning(logger, "Version of mpi4py is too old (currently installed: %s). Please install version at least version 2.0.0 or more recent." % mpi4py.__version__)
         MPI = None
     else:
