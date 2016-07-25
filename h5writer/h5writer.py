@@ -73,8 +73,7 @@ class AbstractH5Writer:
             chunksize = self._chunksize
             #log_debug(logger, self._log_prefix + "Do not increase chunksize (%i) for dataset %s (%i bytes for single data frame)" % (self._chunksize, name, nbytes_chunk))
         else:
-            nbytes_single = numpy.prod(data.shape) * dtype.itemsize
-            chunksize = int(numpy.ceil(float(CHUNKSIZE_MIN_IN_BYTES) / float(nbytes_single)))
+            chunksize = int(numpy.ceil(float(CHUNKSIZE_MIN_IN_BYTES) / float(data.nbytes)))
             log_debug(logger, self._log_prefix + "Increase chunksize from %i to %i for dataset %s (only %i bytes for single data frame)" % (self._chunksize, chunksize, name, nbytes_chunk))
         chunks = tuple([chunksize]+list(data.shape))
         ndim = data.ndim
