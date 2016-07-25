@@ -57,42 +57,33 @@ class AbstractH5Writer:
                     self._f[name][self._i,:] = data[:]
                 
     def _create_dataset(self, data, name):
-        if numpy.isscalar(data):
-            maxshape = (None,)
-            shape = (self._chunksize,)
-            dtype = numpy.dtype(type(data))
-            if dtype == "S":
-                dtype = h5py.new_vlen(str)
-            axes = "experiment_identifier:value"
-            nbytes_single = numpy.array(list(shape))[1:].prod() * dtype.itemsize
-            chunksize = int(numpy.ceil(float(CHUNKSIZE_MIN_IN_BYTES) / float(nbytes_single)))
-            chunks = tuple([chunksize]+list(data.shape))
+        data = numpy.asarray(data)
+        try:
+            h5py.h5t.py_create(data.dtype, logical=1)
+        except TypeError:
+            log_warning(logger, self._log_prefix + "Could not save dataset %s. Conversion to numpy array failed" % (name))
+            return 1
+        maxshape = tuple([None]+list(data.shape))
+        shape = tuple([self._chunksize]+list(data.shape))
+        dtype = data.dtype
+        if dtype.type is numpy.string_:
+            dtype = h5py.new_vlen(str)
+        nbytes_chunk = numpy.prod(shape) * dtype.itemsize
+        if nbytes_chunk > CHUNKSIZE_MIN_IN_BYTES:
+            chunksize = self._chunksize
+            #log_debug(logger, self._log_prefix + "Do not increase chunksize (%i) for dataset %s (%i bytes for single data frame)" % (self._chunksize, name, nbytes_chunk))
         else:
-            data = numpy.asarray(data)
-            try:
-                h5py.h5t.py_create(data.dtype, logical=1)
-            except TypeError:
-                log_warning(logger, self._log_prefix + "Could not save dataset %s. Conversion to numpy array failed" % (name))
-                return 1
-            maxshape = tuple([None]+list(data.shape))
-            shape = tuple([self._chunksize]+list(data.shape))
-            dtype = data.dtype
-            nbytes_chunk = numpy.array(list(shape)).prod() * dtype.itemsize
-            if nbytes_chunk > CHUNKSIZE_MIN_IN_BYTES:
-                chunksize = self._chunksize
-                #log_debug(logger, self._log_prefix + "Do not increase chunksize (%i) for dataset %s (%i bytes for single data frame)" % (self._chunksize, name, nbytes_chunk))
-            else:
-                nbytes_single = numpy.array(list(shape))[1:].prod() * dtype.itemsize
-                chunksize = int(numpy.ceil(float(CHUNKSIZE_MIN_IN_BYTES) / float(nbytes_single)))
-                log_debug(logger, self._log_prefix + "Increase chunksize from %i to %i for dataset %s (only %i bytes for single data frame)" % (self._chunksize, chunksize, name, nbytes_chunk))
-            chunks = tuple([chunksize]+list(data.shape))
-            ndim = data.ndim
-            axes = "experiment_identifier"
-            if ndim == 1: axes = axes + ":x"
-            elif ndim == 2: axes = axes + ":y:x"
-            elif ndim == 3: axes = axes + ":z:y:x"
+            nbytes_single = numpy.prod(data.shape) * dtype.itemsize
+            chunksize = int(numpy.ceil(float(CHUNKSIZE_MIN_IN_BYTES) / float(nbytes_single)))
+            log_debug(logger, self._log_prefix + "Increase chunksize from %i to %i for dataset %s (only %i bytes for single data frame)" % (self._chunksize, chunksize, name, nbytes_chunk))
+        chunks = tuple([chunksize]+list(data.shape))
+        ndim = data.ndim
+        axes = "experiment_identifier"
+        if ndim == 1: axes = axes + ":x"
+        elif ndim == 2: axes = axes + ":y:x"
+        elif ndim == 3: axes = axes + ":z:y:x"
         log_debug(logger, self._log_prefix + "Create dataset %s [shape=%s, chunks=%s, dtype=%s]" % (name, str(shape), str(chunks), str(dtype)))
-        self._f.create_dataset(name, shape, maxshape=maxshape, dtype=dtype, chunks=chunks, **self._create_dataset_kwargs)
+        self._f.create_dataset(name, shape, maxshape=maxshape, dtype=dtype, chunks=chunks)
         self._f[name].attrs.modify("axes",[axes])
         return 0
 

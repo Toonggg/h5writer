@@ -104,7 +104,7 @@ class H5WriterMPISW(AbstractH5Writer):
     def write_slice(self, data_dict):
         """
         Call this function for writing all data in data_dict as a stack of slices (first dimension = stack dimension).
-        Dictionaries within data_dict are represented as HDF5 groups. The slice index is either the next one.
+        Dictionaries within data_dict are represented as HDF5 groups. The slice index is the next one.
         """
         self._send_for_writing({"write_slice": data_dict})
         #self.comm.send({"write_slice": data_dict}, dest=0, tag=0)

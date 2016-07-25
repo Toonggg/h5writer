@@ -63,6 +63,9 @@ def main():
                 O["entry_1"]["data_1"]["ones"] = numpy.ones(shape=(N_ones,N_ones))
                 O["entry_1"]["data_2"] = {}
                 O["entry_1"]["data_2"]["zeros"] = numpy.zeros(shape=(N_zeros,N_zeros))
+                O["rank"] = rank
+                O["size"] = size
+                O["some_string"] = "bla"*i
                 W.write_slice(O)
 
         W.close()
@@ -75,6 +78,8 @@ def main():
             assert "data_2" in f["/entry_1"]
             assert "ones" in f["/entry_1/data_1"]
             assert "zeros" in f["/entry_1/data_2"]
+            assert "rank" in f
+            assert "size" in f
             assert f["/entry_1/data_1/ones"].shape[0] == N_frames
             assert f["/entry_1/data_1/ones"].shape[1] == N_ones
             assert f["/entry_1/data_1/ones"].shape[2] == N_ones
@@ -83,6 +88,8 @@ def main():
             assert f["/entry_1/data_2/zeros"].shape[2] == N_zeros
             assert (numpy.array(f["/entry_1/data_1/ones"]) == 1.).all()
             assert (numpy.array(f["/entry_1/data_2/zeros"]) == 0.).all()
+            #assert f["/rank"][0] == rank
+            assert f["/size"][0] == size
             assert "parameters0" in f
             assert "rank_and_size" in f["/parameters0"]
             assert f["/parameters0/rank_and_size"][0] == 0
@@ -107,6 +114,8 @@ def main():
                     assert "rank_and_size" in f["/parameters%i" % i]
                     assert f["/parameters%i/rank_and_size" % i][0] == i
                     assert f["/parameters%i/rank_and_size" % i][1] == size
+                    #assert f["/rank"][i] == i
+                    assert f["/size"][i] == size
 
     return 0
             
