@@ -92,6 +92,7 @@ class H5WriterMPISW(AbstractH5Writer):
         keys = skeleton.keys()
         keys.sort()
         for k in keys:
+            print "LOOPING", k
             if isinstance(skeleton[k], dict):
                 self._transfer_numpy_arrays(skeleton[k], None if mode == 'master' else data_dict[k], source=source)
             elif isinstance(skeleton[k], _ArrayDescriptor):
@@ -99,6 +100,7 @@ class H5WriterMPISW(AbstractH5Writer):
                     skeleton[k] = numpy.empty(shape=skeleton[k].shape, dtype=skeleton[k].dtype)
                     self.comm.Recv(skeleton[k].data, source=source, tag=0)
                 else:
+                    print "SENDING",data_dict, k
                     self.comm.Send(numpy.ascontiguousarray(data_dict[k]).data, dest=0, tag=0)
 
     def write_slice(self, data_dict):
