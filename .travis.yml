@@ -45,4 +45,5 @@ install:
 
 script:
 # Test examples
+  - cd $HOME/build/mhantke/h5writer/examples; python test.py
   - cd $HOME/build/mhantke/h5writer/examples; mpirun -n 6 python test.py
