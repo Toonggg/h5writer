@@ -64,6 +64,9 @@ class AbstractH5Writer:
             if dtype == "S":
                 dtype = h5py.new_vlen(str)
             axes = "experiment_identifier:value"
+            nbytes_single = numpy.array(list(shape))[1:].prod() * dtype.itemsize
+            chunksize = int(numpy.ceil(float(CHUNKSIZE_MIN_IN_BYTES) / float(nbytes_single)))
+            chunks = tuple([chunksize]+list(data.shape))
         else:
             data = numpy.asarray(data)
             try:
