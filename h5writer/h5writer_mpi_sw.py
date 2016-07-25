@@ -7,8 +7,11 @@ from h5writer import AbstractH5Writer,logger
 
 try:
     import mpi4py
-    if False:#int(mpi4py.__version__.split(".")[0]) < 2:
-        log_warning(logger, "Version of mpi4py is too old (currently installed: %s). Please install version at least version 2.0.0 or more recent." % mpi4py.__version__)
+    mpi4py_version_min = '1.3.1'
+    v1,v2,v2 = (int(v) for v in mpi4py.__version__.split("."))
+    v1_min,v2_min,v2_min = (int(v) for v in mpi4py_version_min.split("."))
+    if v1 < v1_min and v2 < v2_min and v3 < v3_min:
+        log_warning(logger, "Version of mpi4py is too old (currently installed: %s). Please install version at least version %s or more recent." % (mpi4py.__version__, mpi4py_version_min))
         MPI = None
     else:
         MPI = mpi4py.MPI
@@ -61,8 +64,7 @@ class H5WriterMPISW(AbstractH5Writer):
 
             if source == 0:
                 logger.warning('Received write package from master process! Skipping writing.')
-                print
-                l
+                print l
                 continue
 
             if l == "close":
