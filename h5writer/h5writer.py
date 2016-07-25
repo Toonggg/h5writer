@@ -7,6 +7,7 @@ logger = logging.getLogger(__name__)
 from log import log_and_raise_error, log_warning, log_info, log_debug
 
 CHUNKSIZE_MIN_IN_BYTES = 16000000
+CHUNKSIZE_MAX_IN_FRAMES = 10000
 
 class AbstractH5Writer:
     def __init__(self, filename, chunksize, compression):
@@ -75,6 +76,7 @@ class AbstractH5Writer:
         else:
             chunksize = int(numpy.ceil(float(CHUNKSIZE_MIN_IN_BYTES) / float(data.nbytes)))
             log_debug(logger, self._log_prefix + "Increase chunksize from %i to %i for dataset %s (only %i bytes for single data frame)" % (self._chunksize, chunksize, name, nbytes_chunk))
+        chunksize = min([chunksize, CHUNKSIZE_MAX_IN_FRAMES])
         chunks = tuple([chunksize]+list(data.shape))
         ndim = data.ndim
         axes = "experiment_identifier"
