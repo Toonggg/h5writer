@@ -52,6 +52,8 @@ class H5WriterMPISW(AbstractH5Writer):
         t_start = time.time()
         slices = numpy.zeros(self.comm.size, 'i')
         closed = numpy.zeros(self.comm.size, 'i')
+        self._i = 0
+        
         while True:
             
 
@@ -87,14 +89,15 @@ class H5WriterMPISW(AbstractH5Writer):
 
                     # WRITE SLICE TO FILE
                     log_debug(logger, "Write slice to file")
-                    self._write_slice_master(l["write_slice"], i=slices[source]*(self.comm.size-1)+source-1)
+                    self._write_slice_master(l["write_slice"], i=self._i)#slices[source]*(self.comm.size-1)+source-1)
+                    self._i += 1
                     slices[source] += 1
                     # --
                     
                     t1 = time.time()
                     t_write = t1 - t0
 
-                    log_info(logger, "Writing rate %.1f Hz; slice %i (writing %.4f sec; waiting %.4f sec, receiving %.4f sec)" % (slices.sum()/(time.time()-t_start),slices.sum(),t_write,t_wait,t_recv))
+                    log_info(logger, "Writing rate %.1f Hz; slice %i (writing %.4f sec; waiting %.4f sec, receiving %.4f sec)" % (slices.sum()/(time.time()-t_start),self._i-1,t_write,t_wait,t_recv))
 
                 if "write_solo" in l:
 
