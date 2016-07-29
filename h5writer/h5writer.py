@@ -62,7 +62,7 @@ class AbstractH5Writer:
         try:
             h5py.h5t.py_create(data.dtype, logical=1)
         except TypeError:
-            log_warning(logger, self._log_prefix + "Could not save dataset %s. Conversion to numpy array failed" % (name))
+            log_and_raise_error(logger, self._log_prefix + "Could not save dataset %s. Conversion to numpy array failed" % (name))
             return 1
         maxshape = tuple([None]+list(data.shape))
         shape = tuple([self._chunksize]+list(data.shape))
