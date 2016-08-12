@@ -10,7 +10,7 @@ try:
     import mpi4py
     mpi4py_version_min = '1.3.1'
     if StrictVersion(mpi4py.__version__) < StrictVersion(mpi4py_version_min):
-        log_warning(logger, "Version of mpi4py is too old (currently installed: %s). Please install version at least version %s or more recent." % (mpi4py.__version__, mpi4py_version_min))
+        log_warning(logger, "Version of mpi4py is too old (currently installed: %s). Please install at least version %s or more recent." % (mpi4py.__version__, mpi4py_version_min))
         MPI = None
     else:
         MPI = mpi4py.MPI
@@ -187,7 +187,7 @@ class H5WriterMPISW(AbstractH5Writer):
                     log_warning(logger, "Dataset %s already exists! Overwriting with new data." % name)
                 self._f[name] = data_dict[k]
                 
-    def close(self):
+    def close(self, barrier=True):
         """
         Close file.
         """
@@ -195,7 +195,9 @@ class H5WriterMPISW(AbstractH5Writer):
             log_debug("Instance already closed.")
         if not self._is_master():
             self.comm.send("close", dest=0, tag=0)
-        else:
+        if barrier:
+            self.comm.Barrier()
+        if self._is_master():
             log_info(logger, self._log_prefix + "HDF5 writer master process for file %s closed." % (self._filename))
         self._closed = True
         
