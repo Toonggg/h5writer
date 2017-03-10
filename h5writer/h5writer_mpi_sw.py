@@ -13,7 +13,11 @@ try:
         log_warning(logger, "Version of mpi4py is too old (currently installed: %s). Please install at least version %s or more recent." % (mpi4py.__version__, mpi4py_version_min))
         MPI = None
     else:
-        MPI = mpi4py.MPI
+        # This needs to be fixed more properly
+        try:
+            MPI = mpi4py.MPI
+        except AttributeError:
+            MPI = None
 except ImportError:
     log_warning(logger, "Cannot import mpi4py.")
     MPI = None
