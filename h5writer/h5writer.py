@@ -2,7 +2,7 @@ import numpy, os, time
 import h5py
 
 import logging
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('h5writer')
 
 from log import log_and_raise_error, log_warning, log_info, log_debug
 
