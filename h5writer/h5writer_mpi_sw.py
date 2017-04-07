@@ -15,8 +15,8 @@ try:
     else:
         # This needs to be fixed more properly
         try:
-            MPI = mpi4py.MPI
-        except AttributeError:
+            import mpi4py.MPI as MPI
+        except ImportError:
             MPI = None
 except ImportError:
     log_warning(logger, "Cannot import mpi4py.")
