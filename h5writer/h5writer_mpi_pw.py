@@ -183,7 +183,7 @@ class H5WriterMPIPW(AbstractH5Writer):
                     data = recvobj
                 if self._is_master():
                     log_debug(logger, self._log_prefix + "Writing data %s" % (name))
-                    self._f[name] = data
+                    self._write_to_f(name, data)
         
     def _expand_poll(self):
         #log_debug(logger, self._log_prefix + "Polling for stack expansion")

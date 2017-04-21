@@ -51,7 +51,15 @@ class AbstractH5Writer:
                 if name not in self._f:
                     data = D[k]
                     self._create_dataset(data, name)
-                    
+
+    def _write_to_f(self, name, data):
+        if data is None:
+            log_warning(logger, "Data %s is None! Skipping this item as we cannot write this data type." % name)
+        elif name in self._f:
+            log_warning(logger, "Dataset %s already exists! Overwriting with new data." % name)
+        else:
+            self._f[name] = data
+    
     def _write_group(self, D, group_prefix="/"):
         keys = D.keys()
         keys.sort()

@@ -53,9 +53,7 @@ class H5Writer(AbstractH5Writer):
             if isinstance(data_dict[k], dict):
                 self._write_solo_group(data_dict[k], group_prefix=name+"/")
             else:
-                if name in self._f:
-                    log_warning(logger, "Dataset %s already exists! Overwriting with new data." % name)
-                self._f[name] = data_dict[k]
+                self._write_to_f(name, data_dict[k])
                 
     def close(self):
         """

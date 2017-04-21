@@ -3,7 +3,7 @@
 from setuptools import setup
 
 setup(name='h5writer',
-      version='0.5.10',
+      version='0.5.11',
       description='Tool for writing HDF5 files',
       author='Max F. Hantke, Benedikt Daurer, Filipe R. N. C. Maia',
       author_email='maxhantke@gmail.com',
