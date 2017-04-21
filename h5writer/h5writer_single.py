@@ -49,7 +49,7 @@ class H5Writer(AbstractH5Writer):
         keys = data_dict.keys()
         keys.sort()
         for k in keys:
-            name = group_prefix + k
+            name = group_prefix + str(k)
             if isinstance(data_dict[k], dict):
                 self._write_solo_group(data_dict[k], group_prefix=name+"/")
             else:

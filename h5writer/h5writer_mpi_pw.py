@@ -162,7 +162,7 @@ class H5WriterMPIPW(AbstractH5Writer):
         keys = data_dict.keys()
         keys.sort()
         for k in keys:
-            name = group_prefix + k
+            name = group_prefix + str(k)
             if isinstance(data_dict[k], dict):
                 self._write_solocache_group_to_file(data_dict[k], group_prefix=name+"/")
             else:
