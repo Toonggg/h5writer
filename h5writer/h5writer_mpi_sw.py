@@ -13,13 +13,13 @@ try:
         log_warning(logger, "Version of mpi4py is too old (currently installed: %s). Please install at least version %s or more recent." % (mpi4py.__version__, mpi4py_version_min))
         MPI = None
     else:
-        # This needs to be fixed more properly
         try:
             import mpi4py.MPI as MPI
-        except ImportError:
+        except AttributeError:
+            log_warning(logger, "mpi4py has no attribute MPI. MPI support disabled. Check your mpi4py installation if you want to use the MPI capabilities of h5writer.")
             MPI = None
 except ImportError:
-    log_warning(logger, "Cannot import mpi4py.")
+    log_warning(logger, "Cannot import mpi4py. MPI support disabled. Install mpi4py if you want to use the MPI capabilities of h5writer.")
     MPI = None
 
 
