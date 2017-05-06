@@ -36,7 +36,7 @@ class H5WriterMPISW(AbstractH5Writer):
     """
     def __init__(self, filename, comm, chunksize=100, compression=None):
         if mpi4py is None:
-            if not _import_mpi4py()
+            if not _import_mpi4py():
                 return
         self.comm = comm
         if not isinstance(self.comm, MPI.Comm):
