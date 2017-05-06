@@ -19,7 +19,7 @@ def _import_mpi4py():
             MPI = None
         else:
             try:
-                MPI = mpi4py.MPI
+                import mpi4py.MPI as MPI
             except AttributeError:
                 log_warning(logger, "Cannot find mpi4py.MPI.")
                 MPI = None
@@ -190,13 +190,11 @@ class H5WriterMPISW(AbstractH5Writer):
         keys = data_dict.keys()
         keys.sort()
         for k in keys:
-            name = group_prefix + k
+            name = group_prefix + str(k)
             if isinstance(data_dict[k], dict):
                 self._write_solo_group(data_dict[k], group_prefix=name+"/")
             else:
-                if name in self._f:
-                    log_warning(logger, "Dataset %s already exists! Overwriting with new data." % name)
-                self._f[name] = data_dict[k]
+                self._write_to_f(name, data_dict[k])
                 
     def close(self, barrier=True):
         """

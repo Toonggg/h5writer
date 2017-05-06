@@ -10,6 +10,19 @@ CHUNKSIZE_MIN_IN_BYTES = 16000000
 CHUNKSIZE_MAX_IN_FRAMES = 10000
 
 class AbstractH5Writer:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type is not None:
+            print exc_type, exc_value, traceback
+        self.close()
+        return self
+
+    def close(self):
+        # This method must be implemented by classes based on this class
+        return
+
     def __init__(self, filename, chunksize, compression):
         self._filename = os.path.expandvars(filename)        
         self._chunksize = chunksize
@@ -38,7 +51,15 @@ class AbstractH5Writer:
                 if name not in self._f:
                     data = D[k]
                     self._create_dataset(data, name)
-                    
+
+    def _write_to_f(self, name, data):
+        if data is None:
+            log_warning(logger, "Data %s is None! Skipping this item as we cannot write this data type." % name)
+        elif name in self._f:
+            log_warning(logger, "Dataset %s already exists! Overwriting with new data." % name)
+        else:
+            self._f[name] = data
+    
     def _write_group(self, D, group_prefix="/"):
         keys = D.keys()
         keys.sort()
