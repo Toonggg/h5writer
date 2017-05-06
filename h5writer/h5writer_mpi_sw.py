@@ -5,32 +5,39 @@ from log import log_and_raise_error, log_warning, log_info, log_debug
 
 from h5writer import AbstractH5Writer,logger
 
+mpi4py = None
+MPI = None
 from distutils.version import StrictVersion
-try:
-    import mpi4py
-    mpi4py_version_min = '1.3.1'
-    if StrictVersion(mpi4py.__version__) < StrictVersion(mpi4py_version_min):
-        log_warning(logger, "Version of mpi4py is too old (currently installed: %s). Please install at least version %s or more recent." % (mpi4py.__version__, mpi4py_version_min))
-        MPI = None
-    else:
-        # This needs to be fixed more properly
-        try:
-            MPI = mpi4py.MPI
-        except AttributeError:
+def _import_mpi4py():
+    global MPI
+    global mpi4py
+    try:
+        import mpi4py
+        mpi4py_version_min = '1.3.1'
+        if StrictVersion(mpi4py.__version__) < StrictVersion(mpi4py_version_min):
+            log_warning(logger, "Version of mpi4py is too old (currently installed: %s). Please install at least version %s or more recent." % (mpi4py.__version__, mpi4py_version_min))
             MPI = None
-except ImportError:
-    log_warning(logger, "Cannot import mpi4py.")
-    MPI = None
-
+        else:
+            try:
+                MPI = mpi4py.MPI
+            except AttributeError:
+                log_warning(logger, "Cannot find mpi4py.MPI.")
+                MPI = None
+                return False
+    except ImportError:
+        log_warning(logger, "Cannot import mpi4py.")
+        MPI = None
+        return False
+    return True
 
 class H5WriterMPISW(AbstractH5Writer):
     """
     HDF5 writer class for MPI with a master process (rank=0) reserved for writing and inter-process-communication. Slave processes (rank>0) can call write methods and data is sent to the master process for serial writing.
     """
     def __init__(self, filename, comm, chunksize=100, compression=None):
-        if MPI is None:
-            log_and_raise_error(logger, "Could not import mpi4py or too old version. Therefore cannot initialise H5WriterMPISW instance.")
-            return
+        if mpi4py is None:
+            if not _import_mpi4py()
+                return
         self.comm = comm
         if not isinstance(self.comm, MPI.Comm):
             log_and_raise_error(logger, "Cannot initialise H5WriterMPI instance. \'%s\' is not an mpi4py.MPI.Comm instance." % str(self.comm))
