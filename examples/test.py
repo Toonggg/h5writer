@@ -103,7 +103,7 @@ def main():
             assert "rank_and_size" in f["/parameters0"]
             assert f["/parameters0/rank_and_size"][0] == 0
             assert f["/parameters0/rank_and_size"][1] == size
-        if MPI.COMM_WORLD.size > 1:
+        if MPI is not None and MPI.COMM_WORLD.size > 1:
             with h5py.File(filename_mpisw, "r") as f:
                 assert "entry_1" in f
                 assert "data_1" in f["/entry_1"]
