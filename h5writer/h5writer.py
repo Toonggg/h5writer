@@ -58,6 +58,7 @@ class AbstractH5Writer:
         elif name in self._f:
             log_warning(logger, "Dataset %s already exists! Overwriting with new data." % name)
         else:
+            log_debug(logger, "Writing to dataset %s." % name)
             self._f[name] = data
     
     def _write_group(self, D, group_prefix="/"):
@@ -84,6 +85,9 @@ class AbstractH5Writer:
             h5py.h5t.py_create(data.dtype, logical=1)
         except TypeError:
             log_and_raise_error(logger, self._log_prefix + "Could not save dataset %s. Conversion to numpy array failed" % (name))
+            return 1
+        if data.nbytes == 0:
+            log_and_raise_error(logger, self._log_prefix + "Could not save dataset %s. Dataset is empty" % (name))
             return 1
         maxshape = tuple([None]+list(data.shape))
         shape = tuple([self._chunksize]+list(data.shape))
