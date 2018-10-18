@@ -115,7 +115,6 @@ class AbstractH5Writer:
 
     def _is_stack(self, name):
         a = self._f[name].attrs
-        print(a['axes'][0].decode('utf-8'))
         return ("axes" in a.keys() and a["axes"][0].decode('utf-8').startswith('experiment_identifier'))
     
     def _resize_stacks(self, stack_length, group_prefix="/"):
