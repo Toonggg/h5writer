@@ -15,7 +15,7 @@ class AbstractH5Writer:
 
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type is not None:
-            print exc_type, exc_value, traceback
+            print(exc_type, exc_value, traceback)
         self.close()
         return self
 

@@ -78,7 +78,7 @@ class H5WriterMPISW(AbstractH5Writer):
             
             if source == 0:
                 logger.warning('Received write package from master process! Skipping writing.')
-                print l
+                print(l)
                 continue
 
             if l == "close":
