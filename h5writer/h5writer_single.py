@@ -1,9 +1,9 @@
 import numpy, os, time
 import h5py
 
-from log import log_and_raise_error, log_warning, log_info, log_debug
+from .log import log_and_raise_error, log_warning, log_info, log_debug
 
-from h5writer import AbstractH5Writer,logger
+from .h5writer import AbstractH5Writer,logger
 
 class H5Writer(AbstractH5Writer):
     """
@@ -46,7 +46,7 @@ class H5Writer(AbstractH5Writer):
     def _write_solo_group(self, data_dict, group_prefix="/"):
         if group_prefix != "/" and group_prefix not in self._f:
             self._f.create_group(group_prefix)
-        keys = data_dict.keys()
+        keys = list(data_dict.keys())
         keys.sort()
         for k in keys:
             name = group_prefix + str(k)

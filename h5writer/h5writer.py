@@ -4,7 +4,7 @@ import h5py
 import logging
 logger = logging.getLogger('h5writer')
 
-from log import log_and_raise_error, log_warning, log_info, log_debug
+from .log import log_and_raise_error, log_warning, log_info, log_debug
 
 CHUNKSIZE_MIN_IN_BYTES = 16000000
 CHUNKSIZE_MAX_IN_FRAMES = 10000
@@ -36,7 +36,7 @@ class AbstractH5Writer:
         self._initialised = False
         
     def _initialise_tree(self, D, group_prefix="/"):
-        keys = D.keys()
+        keys = list(D.keys())
         keys.sort()
         for k in keys:
             if isinstance(D[k],dict):
@@ -62,7 +62,7 @@ class AbstractH5Writer:
             self._f[name] = data
     
     def _write_group(self, D, group_prefix="/"):
-        keys = D.keys()
+        keys = list(D.keys())
         keys.sort()
         for k in keys:
             if isinstance(D[k],dict):
@@ -110,12 +110,13 @@ class AbstractH5Writer:
         elif ndim == 3: axes = axes + ":z:y:x"
         log_debug(logger, self._log_prefix + "Create dataset %s [shape=%s, chunks=%s, dtype=%s]" % (name, str(shape), str(chunks), str(dtype)))
         self._f.create_dataset(name, shape, maxshape=maxshape, dtype=dtype, chunks=chunks)
-        self._f[name].attrs.modify("axes",[axes])
+        self._f[name].attrs.modify("axes", numpy.string_([axes]))
         return 0
 
     def _is_stack(self, name):
         a = self._f[name].attrs
-        return ("axes" in a.keys() and a["axes"][0].startswith('experiment_identifier'))
+        print(a['axes'][0].decode('utf-8'))
+        return ("axes" in a.keys() and a["axes"][0].decode('utf-8').startswith('experiment_identifier'))
     
     def _resize_stacks(self, stack_length, group_prefix="/"):
         if group_prefix == "/":
@@ -123,7 +124,7 @@ class AbstractH5Writer:
         if stack_length == 0:
             log_warning(logger, self._log_prefix + "Cannot resize stacks to length 0. Skip resize stacks.")
             return
-        keys = self._f[group_prefix].keys()
+        keys = list(self._f[group_prefix].keys())
         keys.sort()
         for k in keys:
             name = group_prefix + k

@@ -1,9 +1,10 @@
 import numpy, os, time
+import numpy, os, time
 import h5py
 
-from log import log_and_raise_error, log_warning, log_info, log_debug
+from .log import log_and_raise_error, log_warning, log_info, log_debug
 
-from h5writer import AbstractH5Writer,logger
+from .h5writer import AbstractH5Writer,logger
 
 mpi4py = None
 MPI = None
@@ -140,7 +141,7 @@ class H5WriterMPISW(AbstractH5Writer):
 
     def _transfer_numpy_arrays(self, skeleton, data_dict=None, source=None):
         mode = 'master' if data_dict is None else 'slave' 
-        keys = skeleton.keys()
+        keys = list(skeleton.keys())
         keys.sort()
         for k in keys:
             if isinstance(skeleton[k], dict):
@@ -187,7 +188,7 @@ class H5WriterMPISW(AbstractH5Writer):
     def _write_solo_group(self, data_dict, group_prefix="/"):
         if group_prefix != "/" and group_prefix not in self._f:
             self._f.create_group(group_prefix)
-        keys = data_dict.keys()
+        keys = list(data_dict.keys())
         keys.sort()
         for k in keys:
             name = group_prefix + str(k)
@@ -212,7 +213,7 @@ class H5WriterMPISW(AbstractH5Writer):
         
 def _make_skeleton(data_dict):
     skeleton = {}
-    keys = data_dict.keys()
+    keys = list(data_dict.keys())
     keys.sort()
     for k in keys:
         v = data_dict[k]
