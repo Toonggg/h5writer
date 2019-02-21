@@ -1,8 +1,9 @@
 # h5writer
 HDF5 write tool for writing data slices
 
-Basic usage
+### Basic usage
 
+#### Writing to file:
 ```
 import numpy as np
 from h5writer import H5Writer
@@ -25,8 +26,19 @@ solo_dict = {
 
 W.write_solo(solo_dict)
 W.close()
-
+```
+#### Reading file:
+```
 with h5py.File("file.h5", "r") as f:
     for ds in f.keys():
         print(f[ds])
+```
+#### *Output:*
+```
+<HDF5 dataset "data1d": shape (10, 10), type "<f8">
+<HDF5 dataset "data2d": shape (10, 10, 20), type "<f8">
+<HDF5 dataset "data3d": shape (10, 10, 20, 30), type "<f8">
+<HDF5 dataset "general_data1d": shape (10,), type "<f8">
+<HDF5 dataset "general_string": shape (), type "|O">
+<HDF5 dataset "i": shape (10,), type "<i4">
 ```
