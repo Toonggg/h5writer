@@ -1,5 +1,5 @@
 # h5writer
-HDF5 write tool for writing data slices
+HDF5 write tool for writing data slices with *numpy* objects
 
 ### Basic usage
 
@@ -20,7 +20,7 @@ for i in range(10):
     W.write_slice(slice_dict)
 
 solo_dict = {
-    "general_string" : "abc",
+    "general_string" : np.string_("abc"),
     "general_data1d" : np.random.rand(10),
 }
 

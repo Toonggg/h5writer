@@ -74,7 +74,7 @@ def main():
                 O["entry_1"]["data_2"]["zeros"] = numpy.zeros(shape=(N_zeros,N_zeros))
                 O["rank"] = rank
                 O["size"] = size
-                O["some_string"] = "bla"*i
+                O["some_string"] = numpy.string_("bla"*i)
                 W.write_slice(O)
 
         W.close()
@@ -140,11 +140,13 @@ err = main()
 if err == 0:
     if master:
         if MPI is None or MPI.COMM_WORLD.size == 1:
-            print "Tested only serial version."
-            print "(For testing MPI execute for example: mpirun -n 4 python test.py)"
+            print("Tested only serial version.")
+            print("(For testing MPI execute for example: mpirun -n 4 python test.py)")
         else:
-            print "Tested both serial and MPI version."
-        print "Tests successful!"
+            print("Tested both serial and MPI version.")
+        print("Tests successful!")
+        sys.exit(0)
 else:
-    print "Failed!"
+    print("Failed!")
+    sys.exit(1)
     
