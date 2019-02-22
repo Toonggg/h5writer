@@ -15,9 +15,9 @@ except ImportError:
 import h5writer
 from h5writer import H5Writer, H5WriterMPISW
 
-h5writer.logger.setLevel("WARNING")
+#h5writer.logger.setLevel("WARNING")
 #h5writer.logger.setLevel("INFO")
-#h5writer.logger.setLevel("DEBUG")
+h5writer.logger.setLevel("DEBUG")
 
 outdir = "."
 
