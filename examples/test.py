@@ -54,7 +54,7 @@ def main():
         Ws.append(H5WriterMPISW(filename=filename_mpisw, comm=MPI.COMM_WORLD, chunksize=3))
 
     if master:
-        Ws.append(H5Writer(filename_no_mpi, chunksize=2))
+        Ws.append(H5Writer(filename_no_mpi, chunksize=3))
     
     for W in Ws:
 

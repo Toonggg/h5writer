@@ -93,7 +93,7 @@ class AbstractH5Writer:
         shape = tuple([self._chunksize]+list(data.shape))
         dtype = data.dtype
         if dtype.type is numpy.string_:
-            dtype = h5py.new_vlen(str)
+            dtype = h5py.special_dtype(vlen=str)
         nbytes_chunk = numpy.prod(shape) * dtype.itemsize
         if nbytes_chunk > CHUNKSIZE_MIN_IN_BYTES:
             chunksize = self._chunksize
@@ -125,11 +125,14 @@ class AbstractH5Writer:
             return
         keys = list(self._f[group_prefix].keys())
         keys.sort()
+        log_debug(logger, self._log_prefix + "Resizing data sets under the following keys:" + str(keys))
         for k in keys:
             name = group_prefix + k
             if isinstance(self._f[name], h5py.Dataset):
                 if self._is_stack(name):
                     self._resize_stack(stack_length, name)
+                else:
+                    log_debug(logger, self._log_prefix + ("Do not resize %s because it is not a stack." % name))
             else:
                 self._resize_stacks(stack_length, name + "/")
         self._stack_length = stack_length
