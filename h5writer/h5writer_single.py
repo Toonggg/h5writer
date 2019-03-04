@@ -30,7 +30,6 @@ class H5Writer(AbstractH5Writer):
         else:
             self._i += 1
         # Expand stacks if needed
-        print(self._i, self._stack_length)
         if self._i >= (self._stack_length-1):
             self._resize_stacks(self._stack_length * 2)
         # Write data
