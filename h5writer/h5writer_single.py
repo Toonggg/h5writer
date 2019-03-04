@@ -35,8 +35,8 @@ class H5Writer(AbstractH5Writer):
         # Write data
         self._write_group(data_dict)
         # Update of maximum index
-        self._i_max = self._i if self._i > self._i_max else self._i_max
-
+        self._i_max = max([self._i, self._i_max])
+        
     def write_solo(self, data_dict):
         """
         Call this function for writing datasets that have no stack dimension (i.e. no slices).

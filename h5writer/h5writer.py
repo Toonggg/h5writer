@@ -3,6 +3,7 @@ import h5py
 
 import logging
 logger = logging.getLogger('h5writer')
+logger.setLevel("DEBUG")
 
 from .log import log_and_raise_error, log_warning, log_info, log_debug
 
@@ -24,7 +25,8 @@ class AbstractH5Writer:
         return
 
     def __init__(self, filename, chunksize, compression):
-        self._filename = os.path.expandvars(filename)        
+        self._f = None # Will be overwritten by implementation object with real file handle
+        self._filename = os.path.expandvars(filename)
         self._chunksize = chunksize
         self._stack_length = chunksize
         self._i = None
@@ -90,7 +92,7 @@ class AbstractH5Writer:
             log_and_raise_error(logger, self._log_prefix + "Could not save dataset %s. Dataset is empty" % (name))
             return 1
         maxshape = tuple([None]+list(data.shape))
-        shape = tuple([self._chunksize]+list(data.shape))
+        shape = tuple([self._stack_length]+list(data.shape))
         dtype = data.dtype
         if dtype.type is numpy.string_:
             dtype = h5py.special_dtype(vlen=str)
