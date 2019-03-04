@@ -143,7 +143,9 @@ class H5WriterMPISW(AbstractH5Writer):
         mode = 'master' if data_dict is None else 'slave' 
         keys = list(skeleton.keys())
         keys.sort()
+        log_debug(logger, self._log_prefix + ("Transfer skeleton: %s" % str(skeleton)))
         for k in keys:
+            log_debug(logger, self._log_prefix + ("Transfer key: %s" % k))
             if isinstance(skeleton[k], dict):
                 self._transfer_numpy_arrays(skeleton[k], None if mode == 'master' else data_dict[k], source=source)
             elif isinstance(skeleton[k], _ArrayDescriptor):
