@@ -112,7 +112,7 @@ class AbstractH5Writer:
         elif ndim == 3: axes = axes + ":z:y:x"
         log_debug(logger, self._log_prefix + "Create dataset %s [shape=%s, chunks=%s, dtype=%s]" % (name, str(shape), str(chunks), str(dtype)))
         self._f.create_dataset(name, shape, maxshape=maxshape, dtype=dtype, chunks=chunks)
-        self._f[name].attrs.modify("axes", numpy.string_([axes]))
+        self._f[name].attrs.modify("axes", [numpy.string_(axes)])
         return 0
 
     def _is_stack(self, name):
