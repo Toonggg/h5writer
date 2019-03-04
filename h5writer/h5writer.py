@@ -140,12 +140,12 @@ class AbstractH5Writer:
         self._stack_length = stack_length
             
     def _resize_stack(self, stack_length, name):
+        old_shape = self._f[name].shape
         new_shape = list(self._f[name].shape)
         new_shape[0] = stack_length
         new_shape = tuple(new_shape)
-        log_debug(logger, self._log_prefix + "Resize dataset %s [old shape: %s, new shape: %s]" % (name, str(self._f[name].shape), str(new_shape)))
         t0 = time.time()
         self._f[name].resize(new_shape)
         t1 = time.time()
+        log_debug(logger, self._log_prefix + "Resize dataset %s [old shape: %s, new shape: %s, intended new shape: %s]" % (name, str(old_shape), str(self._f[name].shape), str(new_shape)))
         log_debug(logger, self._log_prefix + "Resizing time: %f sec (HDF5)" % (t1-t0))
-        assert len(self._f) == stack_length, "Resize failed"
