@@ -148,3 +148,4 @@ class AbstractH5Writer:
         self._f[name].resize(new_shape)
         t1 = time.time()
         log_debug(logger, self._log_prefix + "Resizing time: %f sec (HDF5)" % (t1-t0))
+        assert len(self._f) == stack_length, "Resize failed"
