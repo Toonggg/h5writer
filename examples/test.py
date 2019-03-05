@@ -69,7 +69,7 @@ def main():
                 O = {}
                 O["entry_1"] = {}
                 O["entry_1"]["data_1"] = {}
-                O["entry_1"]["data_1"]["ones"] = numpy.ones(shape=(N_ones,N_ones), dtype=numpy.float16)
+                O["entry_1"]["data_1"]["ones"] = numpy.ones(shape=(N_ones,N_ones), dtype=numpy.float32)
                 O["entry_1"]["data_2"] = {}
                 O["entry_1"]["data_2"]["zeros"] = numpy.zeros(shape=(N_zeros,N_zeros))
                 O["rank"] = rank

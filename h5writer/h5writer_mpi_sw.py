@@ -150,9 +150,13 @@ class H5WriterMPISW(AbstractH5Writer):
                 self._transfer_numpy_arrays(skeleton[k], None if mode == 'master' else data_dict[k], source=source)
             elif isinstance(skeleton[k], _ArrayDescriptor):
                 if mode == 'master':
+                    if numpy.dtype(skeleton[k].dtype) == numpy.float16:
+                        raise RuntimeError('Data type float16 not supported')
                     skeleton[k] = numpy.empty(shape=skeleton[k].shape, dtype=skeleton[k].dtype)
                     self.comm.Recv(skeleton[k].data, source=source, tag=0)
                 else:
+                    if numpy.dtype(data_dict[k].dtype) == numpy.float16:
+                        raise RuntimeError('Data type float16 not supported')
                     self.comm.Send(numpy.ascontiguousarray(data_dict[k]).data, dest=0, tag=0)
 
     def write_slice(self, data_dict):

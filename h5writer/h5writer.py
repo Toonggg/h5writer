@@ -3,7 +3,8 @@ import h5py
 
 import logging
 logger = logging.getLogger('h5writer')
-logger.setLevel("DEBUG")
+
+#logger.setLevel("DEBUG")
 
 from .log import log_and_raise_error, log_warning, log_info, log_debug
 
