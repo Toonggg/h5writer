@@ -40,23 +40,6 @@ class H5Writer(AbstractH5Writer):
         _reduce_to_single_slice(res)
         return res
 
-    @staticmethod
-    def _check_stack_length_consistent(stack: dict) -> Tuple[bool, int]:
-        def get_lengths(d: dict) -> None:
-            lengths = set()
-            for v in d.values():
-                if isinstance(v, dict):
-                    lengths.update(get_lengths(v))
-                else:
-                    lengths.add(len(v))
-            return lengths
-
-        lengths = get_lengths(stack)
-        if len(lengths) == 1:
-            return True, lengths.pop()
-        else:
-            return False, 0
-
     def write_slice(self, data_dict):
         """
         Call this function for writing all data in data_dict as a stack of slices (first dimension = stack dimension).
@@ -80,9 +63,7 @@ class H5Writer(AbstractH5Writer):
         self._i_max = max([self._i, self._i_max])
 
     def write_stack(self, stack: dict) -> None:
-        consistent, length = self._check_stack_length_consistent(stack)
-        if not consistent:
-            raise IndexError("Stack has inconsistent length")
+        length = self._get_stack_length(stack)
         if not self._initialised:
             # Initialise of tree (groups and datasets)
             self._initialise_tree(self._get_slice_from_stack(stack, 0))
