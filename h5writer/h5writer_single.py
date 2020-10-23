@@ -1,5 +1,4 @@
 import copy, numpy, os, time
-from typing import Tuple
 
 import h5py
 
@@ -30,7 +29,7 @@ class H5Writer(AbstractH5Writer):
         """Reduce a stack to just its ith slice"""
         res = copy.deepcopy(stack)
 
-        def _reduce_to_single_slice(d: dict) -> dict:
+        def _reduce_to_single_slice(d: dict) -> None:
             for key in d:
                 if isinstance(d[key], dict):
                     _reduce_to_single_slice(d[key])
