@@ -103,6 +103,34 @@ class AbstractH5Writer:
                 else:
                     self._f[name][self._i, :] = data[:]
 
+    def _write_group_stack(self, stack: dict, length: int, group_prefix="/") -> None:
+        keys = list(stack.keys())
+        keys.sort()
+        for k in keys:
+            if isinstance(stack[k], dict):
+                group_prefix_new = group_prefix + k + "/"
+                self._write_group_stack(stack[k], length, group_prefix_new)
+            else:
+                name = group_prefix + k
+                data = stack[k]
+                log_debug(
+                    logger,
+                    self._log_prefix
+                    + "Write to dataset %s at stack position %i"
+                    % (name, self._i - length + 1),
+                )
+                if name not in self._f:
+                    log_and_raise_error(
+                        logger,
+                        self._log_prefix
+                        + "Write to dataset %s at stack position %i failed because it does not exist. Note that all datasets are initialised from the data of the first write call."
+                        % (name, self._i),
+                    )
+                if numpy.isscalar(data[0]):
+                    self._f[name][self._i - length + 1 : self._i + 1] = data[:]
+                else:
+                    self._f[name][self._i - length + 1 : self._i + 1, :] = data[:]
+
     def _create_dataset(self, data, name):
         data = numpy.asarray(data)
         try:

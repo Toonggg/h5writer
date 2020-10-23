@@ -1,4 +1,6 @@
-import numpy, os, time
+import copy, numpy, os, time
+from typing import Tuple
+
 import h5py
 
 from .log import log_and_raise_error, log_warning, log_info, log_debug
@@ -23,6 +25,38 @@ class H5Writer(AbstractH5Writer):
             )
         self._f = h5py.File(self._filename, "w")
 
+    @staticmethod
+    def _get_slice_from_stack(stack: dict, i: int) -> dict:
+        """Reduce a stack to just its ith slice"""
+        res = copy.deepcopy(stack)
+
+        def _reduce_to_single_slice(d: dict) -> dict:
+            for key in d:
+                if isinstance(d[key], dict):
+                    _reduce_to_single_slice(d[key])
+                else:
+                    d[key] = d[key][i]
+
+        _reduce_to_single_slice(res)
+        return res
+
+    @staticmethod
+    def _check_stack_length_consistent(stack: dict) -> Tuple[bool, int]:
+        def get_lengths(d: dict) -> None:
+            lengths = set()
+            for v in d.values():
+                if isinstance(v, dict):
+                    lengths.update(get_lengths(v))
+                else:
+                    lengths.add(len(v))
+            return lengths
+
+        lengths = get_lengths(stack)
+        if len(lengths) == 1:
+            return True, lengths.pop()
+        else:
+            return False, 0
+
     def write_slice(self, data_dict):
         """
         Call this function for writing all data in data_dict as a stack of slices (first dimension = stack dimension).
@@ -45,12 +79,26 @@ class H5Writer(AbstractH5Writer):
         # Update of maximum index
         self._i_max = max([self._i, self._i_max])
 
-    def write_slices(self, slices):
-        """
-        Call `write_slice` with each element of `slices` in turn
-        """
-        for data_dict in slices:
-            self.write_slice(data_dict)
+    def write_stack(self, stack: dict) -> None:
+        consistent, length = self._check_stack_length_consistent(stack)
+        if not consistent:
+            raise IndexError("Stack has inconsistent length")
+        if not self._initialised:
+            # Initialise of tree (groups and datasets)
+            self._initialise_tree(self._get_slice_from_stack(stack, 0))
+            self._initialised = True
+        # Iterate index
+        if self._i is None:
+            self._i = length - 1
+        else:
+            self._i += length
+        # Expand stacks if needed
+        if self._i >= (self._stack_length - length):
+            self._resize_stacks(self._stack_length * 2 + length)  # to guarantee enough
+        # Write data
+        self._write_group_stack(stack, length)
+        # Update of maximum index
+        self._i_max = max([self._i, self._i_max])
 
     def write_solo(self, data_dict):
         """
