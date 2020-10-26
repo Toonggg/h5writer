@@ -25,8 +25,8 @@ class H5Writer(AbstractH5Writer):
         self._f = h5py.File(self._filename, "w")
 
     @staticmethod
-    def _get_slice_from_stack(stack: dict, i: int) -> dict:
-        """Reduce a stack to just its ith slice"""
+    def _get_slice_from_substack(stack: dict, i: int) -> dict:
+        """Reduce a substack to just its ith slice"""
         res = copy.deepcopy(stack)
 
         def _reduce_to_single_slice(d: dict) -> None:
@@ -61,11 +61,11 @@ class H5Writer(AbstractH5Writer):
         # Update of maximum index
         self._i_max = max([self._i, self._i_max])
 
-    def write_stack(self, stack: dict) -> None:
-        length = self._get_stack_length(stack)
+    def write_substack(self, substack: dict) -> None:
+        length = self._get_substack_length(substack)
         if not self._initialised:
             # Initialise of tree (groups and datasets)
-            self._initialise_tree(self._get_slice_from_stack(stack, 0))
+            self._initialise_tree(self._get_slice_from_substack(substack, 0))
             self._initialised = True
         # Iterate index
         if self._i is None:
@@ -76,7 +76,7 @@ class H5Writer(AbstractH5Writer):
         if self._i >= (self._stack_length - length):
             self._resize_stacks(self._stack_length * 2 + length)  # to guarantee enough
         # Write data
-        self._write_group_stack(stack, length)
+        self._write_group_substack(substack, length)
         # Update of maximum index
         self._i_max = max([self._i, self._i_max])
 

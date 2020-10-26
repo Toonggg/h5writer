@@ -45,7 +45,7 @@ class AbstractH5Writer:
         self._initialised = False
 
     @staticmethod
-    def _get_stack_length(stack: dict) -> int:
+    def _get_substack_length(substack: dict) -> int:
         def get_lengths(d: dict) -> Set[int]:
             lengths = set()
             for v in d.values():
@@ -55,7 +55,7 @@ class AbstractH5Writer:
                     lengths.add(len(v))
             return lengths
 
-        lengths = get_lengths(stack)
+        lengths = get_lengths(substack)
         if len(lengths) == 0:
             return 0
         elif len(lengths) == 1:
@@ -124,17 +124,19 @@ class AbstractH5Writer:
                 else:
                     self._f[name][self._i, :] = data[:]
 
-    def _write_group_stack(self, stack: dict, length: int, group_prefix="/") -> None:
-        keys = list(stack.keys())
+    def _write_group_substack(
+        self, substack: dict, length: int, group_prefix="/"
+    ) -> None:
+        keys = list(substack.keys())
         keys.sort()
-        length = self._get_stack_length(stack)
+        length = self._get_substack_length(substack)
         for k in keys:
-            if isinstance(stack[k], dict):
+            if isinstance(substack[k], dict):
                 group_prefix_new = group_prefix + k + "/"
-                self._write_group_stack(stack[k], length, group_prefix_new)
+                self._write_group_substack(substack[k], length, group_prefix_new)
             else:
                 name = group_prefix + k
-                data = stack[k]
+                data = substack[k]
                 log_debug(
                     logger,
                     self._log_prefix
