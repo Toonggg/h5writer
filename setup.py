@@ -6,7 +6,7 @@ setup(
     name="h5writer",
     version="0.7.0",
     description="Tool for writing HDF5 files",
-    author="Max F. Hantke, Benedikt Daurer, Filipe R. N. C. Maia",
+    author="Max F. Hantke, Benedikt Daurer, Filipe R. N. C. Maia, Jamie van der Sanden",
     author_email="maxhantke@gmail.com",
     url="https://github.com/mhantke/h5writer",
     install_requires=["h5py>=2.2"],
