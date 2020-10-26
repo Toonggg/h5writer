@@ -1,4 +1,5 @@
-import numpy, os, time
+import copy, numpy, os, time
+
 import h5py
 
 from .log import log_and_raise_error, log_warning, log_info, log_debug
@@ -23,6 +24,21 @@ class H5Writer(AbstractH5Writer):
             )
         self._f = h5py.File(self._filename, "w")
 
+    @staticmethod
+    def _get_slice_from_substack(stack: dict, i: int) -> dict:
+        """Reduce a substack to just its ith slice"""
+        res = copy.deepcopy(stack)
+
+        def _reduce_to_single_slice(d: dict) -> None:
+            for key in d:
+                if isinstance(d[key], dict):
+                    _reduce_to_single_slice(d[key])
+                else:
+                    d[key] = d[key][i]
+
+        _reduce_to_single_slice(res)
+        return res
+
     def write_slice(self, data_dict):
         """
         Call this function for writing all data in data_dict as a stack of slices (first dimension = stack dimension).
@@ -42,6 +58,25 @@ class H5Writer(AbstractH5Writer):
             self._resize_stacks(self._stack_length * 2)
         # Write data
         self._write_group(data_dict)
+        # Update of maximum index
+        self._i_max = max([self._i, self._i_max])
+
+    def write_substack(self, substack: dict) -> None:
+        length = self._get_substack_length(substack)
+        if not self._initialised:
+            # Initialise of tree (groups and datasets)
+            self._initialise_tree(self._get_slice_from_substack(substack, 0))
+            self._initialised = True
+        # Iterate index
+        if self._i is None:
+            self._i = length - 1
+        else:
+            self._i += length
+        # Expand stacks if needed
+        if self._i >= (self._stack_length - length):
+            self._resize_stacks(self._stack_length * 2 + length)  # to guarantee enough
+        # Write data
+        self._write_group_substack(substack, length)
         # Update of maximum index
         self._i_max = max([self._i, self._i_max])
 

@@ -1,4 +1,6 @@
 import numpy, os, time
+from typing import Set
+
 import h5py
 
 import logging
@@ -41,6 +43,25 @@ class AbstractH5Writer:
         if compression is not None:
             self._create_dataset_kwargs["compression"] = compression
         self._initialised = False
+
+    @staticmethod
+    def _get_substack_length(substack: dict) -> int:
+        def get_lengths(d: dict) -> Set[int]:
+            lengths = set()
+            for v in d.values():
+                if isinstance(v, dict):
+                    lengths.update(get_lengths(v))
+                else:
+                    lengths.add(len(v))
+            return lengths
+
+        lengths = get_lengths(substack)
+        if len(lengths) == 0:
+            return 0
+        elif len(lengths) == 1:
+            return lengths.pop()
+        else:
+            raise IndexError("Stack has inconsistent length")
 
     def _initialise_tree(self, D, group_prefix="/"):
         keys = list(D.keys())
@@ -102,6 +123,43 @@ class AbstractH5Writer:
                     self._f[name][self._i] = data
                 else:
                     self._f[name][self._i, :] = data[:]
+
+    def _write_group_substack(
+        self, substack: dict, length: int, group_prefix="/"
+    ) -> None:
+        keys = list(substack.keys())
+        keys.sort()
+        length = self._get_substack_length(substack)
+        for k in keys:
+            if isinstance(substack[k], dict):
+                group_prefix_new = group_prefix + k + "/"
+                self._write_group_substack(substack[k], length, group_prefix_new)
+            else:
+                name = group_prefix + k
+                data = substack[k]
+                log_debug(
+                    logger,
+                    self._log_prefix
+                    + "Write to dataset %s at stack in positions [%i:%i]"
+                    % (name, self._i - length + 1, self._i + 1),
+                )
+                if name not in self._f:
+                    log_and_raise_error(
+                        logger,
+                        self._log_prefix
+                        + "Write to dataset %s at stack position %i failed because it does not exist. Note that all datasets are initialised from the data of the first write call."
+                        % (name, self._i),
+                    )
+                if data.ndim == 0:
+                    log_and_raise_error(
+                        logger,
+                        self._log_prefix
+                        + "Cannot write zero-dimensional array to dataset %s." % name,
+                    )
+                elif data.ndim == 1:
+                    self._f[name][self._i - length + 1 : self._i + 1] = data[:]
+                else:
+                    self._f[name][self._i - length + 1 : self._i + 1, :] = data[:]
 
     def _create_dataset(self, data, name):
         data = numpy.asarray(data)
