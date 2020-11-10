@@ -4,7 +4,7 @@ from pathlib import Path
 import re
 from setuptools import setup
 
-NAME_PACKAGE = "lw8"
+NAME_PACKAGE = "h5writer"
 
 PATH_CWD = Path()
 PATH_PACKAGE = PATH_CWD / NAME_PACKAGE
