@@ -25,11 +25,11 @@ class H5Writer(AbstractH5Writer):
         self._f = h5py.File(self._filename, "w")
 
     @staticmethod
-    def _get_slice_from_substack(stack: dict, i: int) -> dict:
+    def _get_slice_from_substack(stack, i):
         """Reduce a substack to just its ith slice"""
         res = copy.deepcopy(stack)
 
-        def _reduce_to_single_slice(d: dict) -> None:
+        def _reduce_to_single_slice(d):
             for key in d:
                 if isinstance(d[key], dict):
                     _reduce_to_single_slice(d[key])
@@ -61,7 +61,7 @@ class H5Writer(AbstractH5Writer):
         # Update of maximum index
         self._i_max = max([self._i, self._i_max])
 
-    def write_substack(self, substack: dict) -> None:
+    def write_substack(self, substack):
         length = self._get_substack_length(substack)
         if not self._initialised:
             # Initialise of tree (groups and datasets)

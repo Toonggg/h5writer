@@ -45,8 +45,8 @@ class AbstractH5Writer:
         self._initialised = False
 
     @staticmethod
-    def _get_substack_length(substack: dict) -> int:
-        def get_lengths(d: dict) -> Set[int]:
+    def _get_substack_length(substack):
+        def get_lengths(d):
             lengths = set()
             for v in d.values():
                 if isinstance(v, dict):
@@ -125,8 +125,8 @@ class AbstractH5Writer:
                     self._f[name][self._i, :] = data[:]
 
     def _write_group_substack(
-        self, substack: dict, length: int, group_prefix="/"
-    ) -> None:
+        self, substack, length, group_prefix="/"
+    ):
         keys = list(substack.keys())
         keys.sort()
         length = self._get_substack_length(substack)
